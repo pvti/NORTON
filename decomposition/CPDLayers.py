@@ -23,7 +23,7 @@ class CPDHead(nn.Module):
 
     """
 
-    def __init__(self, in_channels, out_channels, rank, padding, weight=None):
+    def __init__(self, in_channels, out_channels, rank, padding, weight=None, device=None):
         super(CPDHead, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -34,7 +34,7 @@ class CPDHead(nn.Module):
             assert weight.shape == (
                 in_channels, out_channels, rank), "Invalid weight shape"
         else:
-            weight = torch.Tensor(in_channels, out_channels, rank)
+            weight = torch.zeros((in_channels, out_channels, rank), device=device)
             nn.init.xavier_uniform_(weight)
 
         self.weight = nn.Parameter(weight)
@@ -73,6 +73,30 @@ class CPDHead(nn.Module):
             batch_size, padded_h, padded_w, self.out_channels, self.rank)
 
         return output
+
+    def prune(self, n_keep):
+        """
+        Prunes the filters of the CPDHead based on a given number of filters to keep.
+
+        Args:
+            n_keep (int): Number of filters to keep.
+
+        Returns:
+            selected_index (List[int]): A list containing the indices of the filters to keep.
+        """
+        with torch.no_grad():
+            # Calculate the saliency of filters by their norm
+            filter_norms = torch.norm(self.weight.view(self.out_channels, -1), dim=1)
+
+            # Calculate the number of filters to keep
+            _, selected_index = torch.topk(filter_norms, n_keep)
+
+            # Update weight tensor and out_channels
+            self.weight.set_(self.weight[:, selected_index])
+            self.out_channels = n_keep
+
+        return selected_index
+
 
     def __repr__(self):
         """
@@ -113,7 +137,7 @@ class CPDBody(nn.Module):
 
     """
 
-    def __init__(self, in_channels, out_channels, rank, kernel_size, padding, weight=None):
+    def __init__(self, in_channels, out_channels, rank, kernel_size, padding, weight=None, device=None):
         super(CPDBody, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -125,7 +149,7 @@ class CPDBody(nn.Module):
             assert weight.shape == (
                 out_channels, rank, kernel_size), "Invalid weight shape"
         else:
-            weight = torch.Tensor(out_channels, rank, kernel_size)
+            weight = torch.zeros((out_channels, rank, kernel_size), device=device)
             nn.init.xavier_uniform_(weight)
 
         self.weight = nn.Parameter(weight)
@@ -160,6 +184,29 @@ class CPDBody(nn.Module):
         output = torch.sum(Oc_expanded * B_expanded, dim=-1)
 
         return output
+
+    def prune(self, n_keep):
+        """
+        Prunes the filters of the CPDBody based on a given number of filters to keep.
+
+        Args:
+            n_keep (int): Number of filters to keep.
+
+        Returns:
+            selected_index (List[int]): A list containing the indices of the filters to keep.
+        """
+        with torch.no_grad():
+            # Calculate the saliency of filters by their norm
+            filter_norms = torch.norm(self.weight.view(self.out_channels, -1), dim=1)
+
+            # Calculate the number of filters to keep
+            _, selected_index = torch.topk(filter_norms, n_keep)
+
+            # Update weight tensor and out_channels
+            self.weight.set_(self.weight[:, selected_index])
+            self.out_channels = n_keep
+
+        return selected_index
 
     def __repr__(self):
         """
@@ -204,7 +251,7 @@ class CPDTail(nn.Module):
 
     """
 
-    def __init__(self, in_channels, out_channels, rank, kernel_size, padding, weight=None, bias=None):
+    def __init__(self, in_channels, out_channels, rank, kernel_size, padding, weight=None, bias=None, device=None):
         super(CPDTail, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -216,7 +263,7 @@ class CPDTail(nn.Module):
             assert weight.shape == (
                 out_channels, rank, kernel_size), "Invalid weight shape"
         else:
-            weight = torch.Tensor(out_channels, rank, kernel_size)
+            weight = torch.zeros((out_channels, rank, kernel_size), device=device)
             nn.init.xavier_uniform_(weight)
 
         self.weight = nn.Parameter(weight)
@@ -224,7 +271,7 @@ class CPDTail(nn.Module):
         if bias is not None:
             assert bias.shape == (out_channels,), "Invalid bias shape"
         else:
-            bias = torch.zeros(out_channels)
+            bias = torch.zeros(out_channels, device=device)
 
         self.bias = nn.Parameter(bias)
 
@@ -266,6 +313,30 @@ class CPDTail(nn.Module):
 
         return output
 
+    def prune(self, n_keep):
+        """
+        Prunes the filters of the CPDTail based on a given number of filters to keep.
+
+        Args:
+            n_keep (int): Number of filters to keep.
+
+        Returns:
+            selected_index (List[int]): A list containing the indices of the filters to keep.
+        """
+        with torch.no_grad():
+            # Calculate the saliency of filters by their norm
+            filter_norms = torch.norm(self.weight.view(self.out_channels, -1), dim=1)
+
+            # Calculate the number of filters to keep
+            _, selected_index = torch.topk(filter_norms, n_keep)
+
+            # Update weight, bias tensor and out_channels
+            self.weight.set_(self.weight[:, selected_index])
+            self.bias.set_(self.bias[selected_index])
+            self.out_channels = n_keep
+
+        return selected_index
+
     def __repr__(self):
         """
         Return a string representation of the module.
@@ -283,15 +354,62 @@ class CPDTail(nn.Module):
                 )
 
 
-if __name__ == "__main__":
-    # Test with valid input
-    net = nn.Sequential(
-        *[CPDHead(64, 128, 9, 1), CPDBody(64, 128, 9, 3, 1), CPDTail(64, 128, 9, 3, 1)])
-    print(net)
+class CPDLayer(nn.Sequential):
+    """
+    A wrapper layer for the Candecomp-Parafac decomposition (CPD) that applies a CPD-based
+    convolution to an input tensor.
 
-    # Test with invalid weight shape
-    try:
-        net = CPDHead(64, 128, 9, 1, weight=torch.rand(5, 5, 5))
-    except AssertionError as e:
-        raise ValueError(
-            "Invalid weight shape. Weight shape should be (out_channels, in_channels, rank).")
+    Args:
+        in_channels (int): Number of input channels.
+        out_channels (int): Number of output channels.
+        rank (int): Rank of the weight tensor used in the CPD decomposition.
+        kernel_size (int, optional): Size of the convolution kernel. Defaults to 3.
+        padding (int, optional): Amount of padding to add to the input tensor. Defaults to 1.
+
+    Attributes:
+        in_channels (int): Number of input channels.
+        out_channels (int): Number of output channels.
+        rank (int): Rank of the weight tensor.
+        kernel_size (int): Kernel size of the weight tensor.
+        padding (int): Amount of padding to add to the input tensor.
+        head (CPDHead): The head module of the CPD-based convolution layer.
+        body (CPDBody): The body module of the CPD-based convolution layer.
+        tail (CPDTail): The tail module of the CPD-based convolution layer.
+
+    """
+
+    def __init__(self, in_channels, out_channels, rank, kernel_size=3, padding=1, device=None):
+        super(CPDLayer, self).__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.rank = rank
+        self.kernel_size = kernel_size
+        self.padding = padding
+        self.device = device
+        self.add_module("head", CPDHead(in_channels, out_channels, rank, padding, device=device))
+        self.add_module("body", CPDBody(in_channels, out_channels, rank, kernel_size, padding, device=device))
+        self.add_module("tail", CPDTail(in_channels, out_channels, rank, kernel_size, padding, device=device))
+
+    def prune(self, compress_rate):
+        """
+        Prunes the weights of each sublayer of the CPDLayer based on a given compression rate.
+
+        Args:
+            compress_rate (float): A value between 0 and 1 indicating the percentage of filters to prune.
+
+        Returns:
+            selected_index (Tuple[List[int], List[int], List[int]]): A tuple containing the index of the filters to keep
+            in the head, body, and tail sublayers respectively.
+        """
+        n_keep = int(self.out_channels * (1 - compress_rate))
+        self.out_channels = n_keep
+        head_selected_index = self.head.prune(n_keep)
+        body_selected_index = self.body.prune(n_keep)
+        tail_selected_index = self.tail.prune(n_keep)
+
+        return (head_selected_index, body_selected_index, tail_selected_index)
+
+
+if __name__ == "__main__":
+    net = CPDLayer(64, 128, 9, 3, 1)
+    print(net)

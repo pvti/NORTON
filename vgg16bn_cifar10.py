@@ -10,16 +10,14 @@ import torch.utils.data
 import tensorly as tl
 
 import utils.common as utils
-from utils.profile import get_num_parameters, get_model_macs
 from data import cifar10
 from models.cifar10.vgg import vgg_16_bn
 
-from decomposition.decomposition import cp_decompose_model
+from decomposition.decomposition import cp_decomposition_conv_layer
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        "Cifar-10 decomposition, filter pruning and finetuning")
+    parser = argparse.ArgumentParser("Cifar-10 decomposition")
 
     parser.add_argument('--data_dir', type=str,
                         default='data', help='path to dataset')
@@ -48,15 +46,20 @@ def parse_args():
                         help='Select gpu to use')
     parser.add_argument('--decomposer', default='cp',
                         type=str, help='decomposer')
-    parser.add_argument("-r", "--rank", dest="rank", type=int, default=7,
+    parser.add_argument("-r", "--rank", dest="rank", type=int, default=3,
                         help="use pre-specified rank for all layers")
-    parser.add_argument("--exclude-first-conv", dest="exclude_first_conv", action="store_true",
-                        help="avoid decomposing first convolution layer")
+    parser.add_argument('--dcp_epochs', type=int, default=50,
+                        help='num of fine-tuning epochs after decomposing each layer')
+    parser.add_argument('--dcp_max_epochs', type=int, default=300,
+                        help='max num of fine-tuning epochs after decomposing each layer')
+    parser.add_argument('--dcp_acc_drop', type=float, default=0.05,
+                        help='accuracy drop threshold for decomposing each layer')
 
     return parser.parse_args()
 
 
 args = parse_args()
+os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 print_freq = (256*50)//args.batch_size
 
@@ -67,16 +70,44 @@ if not os.path.isdir(args.job_dir):
 
 utils.record_config(args)
 now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-logger = utils.get_logger(os.path.join(args.job_dir, 'logger'+now+'.log'))
+logger = utils.get_logger(os.path.join(args.job_dir, 'logger_decomposition'+now+'.txt'))
+
+
+def finetune(model, train_loader, val_loader, num_epochs, max_num_epochs, ori_acc, acc_drop_threshold):
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(
+    ), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    scheduler = torch.optim.lr_scheduler.StepLR(
+        optimizer, step_size=int(max_num_epochs/2), gamma=0.1)
+
+    _, best_top1_acc, _ = validate(val_loader, model, criterion)
+    best_model_state = model.state_dict()
+    epoch = 0
+    acc_drop = ori_acc - best_top1_acc
+    while epoch < max_num_epochs:
+        train(epoch, train_loader, model, criterion, optimizer, scheduler)
+        _, valid_top1_acc, _ = validate(val_loader, model, criterion)
+
+        if valid_top1_acc > best_top1_acc:
+            best_top1_acc = valid_top1_acc
+            best_model_state = model.state_dict()
+
+        acc_drop = ori_acc - best_top1_acc
+        if (acc_drop < acc_drop_threshold) and (epoch > num_epochs-1):
+            break
+        epoch += 1
+
+    model.load_state_dict(best_model_state)
+
+    return model, epoch
 
 
 def main():
     # init wandb
-    name = args.decomposer + '_' + str(args.rank)
-    wandb.init(name=name, project='TENDING' + '_' + args.arch +
+    name = str(args.rank) + '_' + args.compress_rate
+    wandb.init(name=name, project='TENDING_decomposition' + '_' + args.arch +
                '_' + args.decomposer, config=vars(args))
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     tl.set_backend("pytorch")
 
     # load training data
@@ -91,65 +122,70 @@ def main():
 
     # load baseline model
     logger.info('Loading baseline model')
-    origin_model = vgg_16_bn().cuda()
+    model = vgg_16_bn().cuda()
     ckpt = torch.load(args.pretrain_dir, map_location='cuda:0')
-    origin_model.load_state_dict(ckpt['state_dict'])
-
+    model.load_state_dict(ckpt['state_dict'])
     # decompose
-    model = origin_model
+    _, ori_acc, _ = validate(val_loader, model, criterion)
     logger.info('Decomposing model:')
-    if args.decomposer == 'cp':
-        model = cp_decompose_model(
-            origin_model, args.rank, args.exclude_first_conv)
-    else:
-        raise Exception(('Unsupported decomposer passed: ' + args.decomposer))
+    for name, module in reversed(list(model.features._modules.items())):
+        if isinstance(module, nn.Conv2d):
+            logger.info(name)
+            cpd_layer = cp_decomposition_conv_layer(module, args.rank)
+            model.features._modules[name] = cpd_layer
+            _, decomposed_acc, _ = validate(val_loader, model, criterion)
+            model, epoch = finetune(model, train_loader, val_loader, num_epochs=args.dcp_epochs,
+                                    max_num_epochs=args.dcp_max_epochs, ori_acc=ori_acc, acc_drop_threshold=args.dcp_acc_drop)
+            _, finetuned_acc, _ = validate(val_loader, model, criterion)
+            wandb.log({'layer': int(
+                name[4:]), 'decomposed_acc': decomposed_acc, 'finetuned_acc': finetuned_acc, 'epoch_used': epoch})
 
-    # inspect decomposed model
-    logger.info('Evaluating decomposed model:')
-    _, decomposed_acc, _ = validate(val_loader, model, criterion)
-    params = get_num_parameters(model)
-    dummy_input = torch.randn(1, 3, 32, 32).cuda()
-    macs = get_model_macs(model, dummy_input)
-    wandb.log({'decomposed_acc': decomposed_acc,
-              'macs': macs, 'params': params})
+    utils.save_checkpoint({
+        'state_dict': model.state_dict(),
+    }, True, args.job_dir)
 
-    # fine-tuning
-    logger.info('Finetuning model:')
-    optimizer = torch.optim.SGD(model.parameters(
-    ), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=args.lr, div_factor=args.div_factor, epochs=args.epochs, steps_per_epoch=len(
-        train_loader), pct_start=args.pct_start, final_div_factor=args.final_div_factor)
+    # # inspect decomposed model
+    # logger.info('Evaluating decomposed model:')
+    # _, decomposed_acc, _ = validate(val_loader, model, criterion)
+    # wandb.log({'decomposed_acc': decomposed_acc})
 
-    start_epoch = 0
-    best_top1_acc = 0
+    # # fine-tuning
+    # logger.info('Finetuning model:')
+    # optimizer = torch.optim.SGD(model.parameters(
+    # ), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    # scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=args.lr, div_factor=args.div_factor, epochs=args.epochs, steps_per_epoch=len(
+    #     train_loader), pct_start=args.pct_start, final_div_factor=args.final_div_factor)
 
-    # train the model
-    epoch = start_epoch
-    while epoch < args.epochs:
-        train(epoch,  train_loader, model, criterion, optimizer, scheduler)
-        _, valid_top1_acc, valid_top5_acc = validate(
-            val_loader, model, criterion)
+    # start_epoch = 0
+    # best_top1_acc = 0
 
-        is_best = False
-        if valid_top1_acc > best_top1_acc:
-            best_top1_acc = valid_top1_acc
-            is_best = True
+    # # train the model
+    # epoch = start_epoch
+    # while epoch < args.epochs:
+    #     train(epoch,  train_loader, model, criterion, optimizer, scheduler)
+    #     _, valid_top1_acc, _ = validate(
+    #         val_loader, model, criterion)
 
-        utils.save_checkpoint({
-            'epoch': epoch,
-            'state_dict': model.state_dict(),
-            'best_top1_acc': best_top1_acc,
-            'optimizer': optimizer.state_dict(),
-        }, is_best, args.job_dir)
+    #     is_best = False
+    #     if valid_top1_acc > best_top1_acc:
+    #         best_top1_acc = valid_top1_acc
+    #         is_best = True
 
-        cur_lr = optimizer.param_groups[0]["lr"]
-        wandb.log({'epoch': epoch, 'best_acc': max(valid_top1_acc, best_top1_acc), 'top1': valid_top1_acc,
-                   'top5': valid_top5_acc, 'lr': cur_lr})
+    #     utils.save_checkpoint({
+    #         'epoch': epoch,
+    #         'state_dict': model.state_dict(),
+    #         'best_top1_acc': best_top1_acc,
+    #         'optimizer': optimizer.state_dict(),
+    #     }, is_best, args.job_dir)
 
-        epoch += 1
-        logger.info("=>Best accuracy {:.3f}".format(best_top1_acc))
+    #     cur_lr = optimizer.param_groups[0]["lr"]
+    #     wandb.log({'best_acc': max(valid_top1_acc, best_top1_acc),
+    #               'top1': valid_top1_acc, 'lr': cur_lr})
 
-    wandb.save(os.path.join(args.job_dir, '*'))
+    #     epoch += 1
+    #     logger.info("=>Best accuracy {:.3f}".format(best_top1_acc))
+
+    # wandb.save(os.path.join(args.job_dir, '*'))
 
 
 def train(epoch, train_loader, model, criterion, optimizer, scheduler):
@@ -159,8 +195,9 @@ def train(epoch, train_loader, model, criterion, optimizer, scheduler):
 
     model.train()
 
-    for param_group in optimizer.param_groups:
-        cur_lr = param_group['lr']
+    # for param_group in optimizer.param_groups:
+    #     cur_lr = param_group['lr']
+    cur_lr = optimizer.param_groups[0]["lr"]
     logger.info('learning_rate: ' + str(cur_lr))
 
     num_iter = len(train_loader)
@@ -183,7 +220,6 @@ def train(epoch, train_loader, model, criterion, optimizer, scheduler):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        scheduler.step()
 
         if i % print_freq == 0:
             logger.info(
@@ -193,6 +229,7 @@ def train(epoch, train_loader, model, criterion, optimizer, scheduler):
                 'Lr {cur_lr:.4f}'.format(
                     epoch, i, num_iter, loss=losses,
                     top1=top1, top5=top5, cur_lr=cur_lr))
+    scheduler.step()
 
     return losses.avg, top1.avg, top5.avg
 

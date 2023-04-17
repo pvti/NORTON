@@ -36,7 +36,7 @@ class VGG(nn.Module):
                 x = int(x * (1 - self.compress_rate[cnt]))
                 cnt += 1
                 cpd_layer = CPDLayer(in_channels, x, rank=self.rank, kernel_size=3, padding=1)
-                layers.add_module('cpd%d' % i, cpd_layer)  # Add the CPDLayer
+                layers.add_module('conv%d' % i, cpd_layer)  # Add the CPDLayer
                 layers.add_module('norm%d' % i, nn.BatchNorm2d(x))
                 layers.add_module('relu%d' % i, nn.ReLU(inplace=True))
                 in_channels = x

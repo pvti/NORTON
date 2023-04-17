@@ -127,3 +127,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# custom objects
+.vscode/
+/wandb
+/checkpoint
+/data/MNIST
+/data/cifar-10-batches-py
+/result

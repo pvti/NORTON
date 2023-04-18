@@ -59,5 +59,5 @@ if __name__ == '__main__':
     reduced = (1-params/original_params)*100
     dummy_input = torch.randn(1, 3, 32, 32).cuda()
     # macs = get_model_macs(model, dummy_input)
-    model(dummy_input)
+    # model(dummy_input)
     print(f'params = {params}, reduced = {reduced:.2f} %')

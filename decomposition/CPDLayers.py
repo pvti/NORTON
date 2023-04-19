@@ -76,27 +76,20 @@ class CPDHead(nn.Module):
 
         return output
 
-    def prune(self, n_keep):
+    def prune(self, selected_index):
         """
-        Prunes the filters of the CPDHead based on a given number of filters to keep.
+        Prunes the filters of the CPDHead based on given indices of filters to keep.
 
         Args:
-            n_keep (int): Number of filters to keep.
+            selected_index (List[int]): List of the indices of filters to keep.
 
         Returns:
-            selected_index (List[int]): A list containing the indices of the filters to keep.
+            None.
         """
         with torch.no_grad():
-            temp_weight = self.weight.detach().clone()
-            temp_weight = temp_weight.transpose(1, 0)
-
-            saliency = get_saliency(temp_weight)
-            # Calculate the number of filters to keep
-            _, selected_index = torch.topk(saliency, n_keep)
-
             # Update weight tensor and out_channels
             self.weight.set_(self.weight[:, selected_index])
-            self.out_channels = n_keep
+            self.out_channels = len(selected_index)
 
         return selected_index
 
@@ -203,28 +196,20 @@ class CPDBody(nn.Module):
 
         return output
 
-    def prune(self, n_keep):
+    def prune(self, selected_index):
         """
-        Prunes the filters of the CPDBody based on a given number of filters to keep.
+        Prunes the filters of the CPDBody based on given indices of filters to keep.
 
         Args:
-            n_keep (int): Number of filters to keep.
+            selected_index (List[int]): List of the indices of filters to keep.
 
         Returns:
-            selected_index (List[int]): A list containing the indices of the filters to keep.
+            None.
         """
         with torch.no_grad():
-            saliency = get_saliency(self.weight)
-            # Calculate the number of filters to keep
-            _, selected_index = torch.topk(saliency, n_keep)
-
             # Update weight tensor and out_channels
-            before = self.weight.shape
             self.weight.set_(self.weight[selected_index, :])
-            after = self.weight.shape
-            self.out_channels = n_keep
-
-        return selected_index
+            self.out_channels = len(selected_index)
 
     def update_in_channels(self, selected_index):
         """
@@ -344,7 +329,7 @@ class CPDTail(nn.Module):
 
         return output
 
-    def prune(self, n_keep):
+    def prune(self, selected_index):
         """
         Prunes the filters of the CPDTail based on a given number of filters to keep.
 
@@ -352,28 +337,19 @@ class CPDTail(nn.Module):
             n_keep (int): Number of filters to keep.
 
         Returns:
-            selected_index (List[int]): A list containing the indices of the filters to keep.
         """
         with torch.no_grad():
-            saliency = get_saliency(self.weight)
-            # Calculate the number of filters to keep
-            _, selected_index = torch.topk(saliency, n_keep)
-
             # Update weight, bias tensor and out_channels
-            before = self.weight.shape
             self.weight.set_(self.weight[selected_index, :])
-            after = self.weight.shape
             self.bias.set_(self.bias[selected_index])
-            self.out_channels = n_keep
-
-        return selected_index
+            self.out_channels = len(selected_index)
 
     def update_in_channels(self, selected_index):
         """
-        Updates the number of input channels of the CPDTail based on a given list of indices of the filters to keep.
+        Updates the number of input channels of the CPDTail based on given indices of filters to keep.
 
         Args:
-            selected_index (List[int]): A list containing the indices of the filters to keep.
+            selected_index (List[int]): List of the indices of filters to keep.
 
         Returns:
             None.
@@ -449,11 +425,17 @@ class CPDLayer(nn.Sequential):
         """
         n_keep = int(self.out_channels * (1 - compress_rate))
         self.out_channels = n_keep
-        head_selected_index = self.head.prune(n_keep)
-        body_selected_index = self.body.prune(n_keep)
-        tail_selected_index = self.tail.prune(n_keep)
+        with torch.no_grad():
+            head_weight = self.head.weight.detach().clone()
+            head_weight = head_weight.transpose(1, 0)
+        saliency = get_saliency(
+            head_weight, self.body.weight, self.tail.weight)
+        _, selected_index = torch.topk(saliency, n_keep)
+        self.head.prune(selected_index)
+        self.body.prune(selected_index)
+        self.tail.prune(selected_index)
 
-        return (head_selected_index, body_selected_index, tail_selected_index)
+        return selected_index
 
     def update_in_channels(self, selected_index):
         """

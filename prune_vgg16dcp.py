@@ -103,11 +103,12 @@ def main():
         cur_bn = all_bns[i]
         next_cpd = all_cpds[i + 1]
         # prune the current CPD layer
-        _, _, tail_selected_index = cur_cpd.prune(cpr)
+        selected_index = cur_cpd.prune(cpr)
         # prune the current BN layer
-        cur_bn = prune_bn_module(cur_bn, tail_selected_index)
+        cur_bn = prune_bn_module(cur_bn, selected_index)
         # update the next CPD layer
-        next_cpd.update_in_channels(tail_selected_index)
+        next_cpd.update_in_channels(selected_index)
+        validate(val_loader, model, criterion)
 
     # fine-tuning
     logger.info('Finetuning model:')

@@ -1,21 +1,26 @@
 import torch
 
 
-def get_saliency(weight):
+def get_saliency(head_weight, body_weight, tail_weight):
     """
     Computes the saliency of each filter in the weight tensor.
 
     Args:
-        weight (torch.Tensor): The weight tensor of shape (out_channels, W, H).
+        head_weight (torch.Tensor): The weight tensor of a CPDHead layer, of shape (out_channels, in_channels, rank).
+        head_weight (torch.Tensor): The weight tensor of a CPDBody layer, of shape (out_channels, rank, kernel_size).
+        head_weight (torch.Tensor): The weight tensor of a CPDTail layer, of shape (out_channels, rank, kernel_size).
 
     Returns:
         saliency (torch.Tensor): A 1D tensor containing the saliency of each filter.
     """
-    num_filters = weight.shape[0]
+    num_filters = head_weight.shape[0]
     distance_matrix = torch.zeros(num_filters, num_filters)
     for i in range(num_filters-1):
         for j in range(i+1, num_filters):
-            distance_matrix[i, j] = VBD(weight[i], weight[j])
+            head = VBD(head_weight[i], head_weight[j])
+            body = VBD(body_weight[i], body_weight[j])
+            tail = VBD(tail_weight[i], tail_weight[j])
+            distance_matrix[i, j] = head*body*tail
             distance_matrix[j, i] = distance_matrix[i, j]
 
     saliency = torch.full((num_filters, ), num_filters-1)

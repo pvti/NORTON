@@ -104,7 +104,7 @@ def finetune(model, train_loader, val_loader, num_epochs, max_num_epochs, ori_ac
 
 def main():
     # init wandb
-    name = str(args.rank) + '_' + args.compress_rate
+    name = str(args.rank)
     wandb.init(name=name, project='TENDING_decomposition' + '_' + args.arch +
                '_' + args.decomposer, config=vars(args))
 

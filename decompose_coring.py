@@ -24,8 +24,8 @@ def parse_args():
                         default='data', help='path to dataset')
     parser.add_argument('--arch', type=str,
                         default='vgg_16_bn', help='architecture')
-    parser.add_argument('--pretrain_dir', type=str, default='checkpoint/cifar10/vgg_16_bn.pt',
-                        help='pretrain model path')
+    parser.add_argument('--pruned', type=str, default='checkpoint/cifar10/pruned/vgg16_[0.05]*7+[0.2]*5.pt',
+                        help='pruned model path')
     parser.add_argument('--job_dir', type=str, default='result',
                         help='path for saving trained models')
     parser.add_argument('--batch_size', type=int,
@@ -45,13 +45,11 @@ def parse_args():
                         help='pct_start of OneCycle Learning rate Schedule (default: 0.1)')
     parser.add_argument('--gpu', type=str, default='0',
                         help='Select gpu to use')
-    parser.add_argument('--decomposer', default='cp',
-                        type=str, help='decomposer')
-    parser.add_argument("-r", "--rank", dest="rank", type=int, default=3,
+    parser.add_argument("-r", "--rank", dest="rank", type=int, default=5,
                         help="use pre-specified rank for all layers")
-    parser.add_argument('--dcp_epochs', type=int, default=50,
+    parser.add_argument('--dcp_epochs', type=int, default=10,
                         help='num of fine-tuning epochs after decomposing each layer')
-    parser.add_argument('--dcp_max_epochs', type=int, default=300,
+    parser.add_argument('--dcp_max_epochs', type=int, default=50,
                         help='max num of fine-tuning epochs after decomposing each layer')
     parser.add_argument('--dcp_acc_drop', type=float, default=0.05,
                         help='accuracy drop threshold for decomposing each layer')
@@ -67,36 +65,36 @@ os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 print_freq = (256*50)//args.batch_size
 
 args.job_dir = os.path.join(args.job_dir, args.arch,
-                            args.decomposer, str(args.rank), args.compress_rate)
+                            args.compress_rate, str(args.rank))
 if not os.path.isdir(args.job_dir):
     os.makedirs(args.job_dir)
 
 utils.record_config(args)
 now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
 logger = utils.get_logger(os.path.join(
-    args.job_dir, 'logger_decompose_coring'+now+'.txt'))
+    args.job_dir, 'logger_prune_decompose'+now+'.txt'))
 
 
 def finetune(model, train_loader, val_loader, num_epochs, max_num_epochs, ori_acc, acc_drop_threshold):
     criterion = nn.CrossEntropyLoss()
+    # use a small learning rate
     optimizer = torch.optim.SGD(model.parameters(
-    ), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    ), lr=0.5*args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.StepLR(
         optimizer, step_size=int(max_num_epochs/2), gamma=0.1)
 
     _, best_top1_acc, _ = validate(val_loader, model, criterion)
-    # ori_model = copy.deepcopy(model)
-    # best_model_state = ori_model.state_dict()
-    best_model_state = model.state_dict()
+    best_model_state = copy.deepcopy(model.state_dict())
     epoch = 0
     while epoch < max_num_epochs:
         train(epoch, train_loader, model, criterion, optimizer, scheduler)
         _, valid_top1_acc, _ = validate(val_loader, model, criterion)
 
         if valid_top1_acc > best_top1_acc:
-            print(f'valid_top1_acc > best_top1_acc ', valid_top1_acc, best_top1_acc)
+            print(f'valid_top1_acc > best_top1_acc ',
+                  valid_top1_acc, best_top1_acc)
             best_top1_acc = valid_top1_acc
-            best_model_state = model.state_dict()
+            best_model_state = copy.deepcopy(model.state_dict())
 
         acc_drop = ori_acc - best_top1_acc
         if (acc_drop < acc_drop_threshold) and (epoch > num_epochs-1):
@@ -110,9 +108,9 @@ def finetune(model, train_loader, val_loader, num_epochs, max_num_epochs, ori_ac
 
 def main():
     # init wandb
-    name = str(args.rank) + '_' + args.compress_rate
-    wandb.init(name=name, project='TENDING_decompose_coring' + '_' + args.arch +
-               '_' + args.decomposer, config=vars(args))
+    name = args.compress_rate + '_' + str(args.rank)
+    wandb.init(name=name, project='TENDING_prune_decompose' +
+               '_' + args.arch, config=vars(args))
 
     tl.set_backend("pytorch")
 
@@ -127,34 +125,30 @@ def main():
     logger.info("args = %s", args)
 
     # load baseline model
-    logger.info('Loading baseline model')
+    logger.info('Loading pruned model')
     compress_rate = utils.get_cpr(args.compress_rate)
     model = vgg_16_bn(compress_rate=compress_rate).cuda()
-    ckpt = torch.load(args.pretrain_dir, map_location='cuda:0')
+    ckpt = torch.load(args.pruned, map_location='cuda:0')
     model.load_state_dict(ckpt['state_dict'], strict=False)
     # decompose
-    # _, ori_acc, _ = validate(val_loader, model, criterion)
+    _, ori_acc, _ = validate(val_loader, model, criterion)
     logger.info('Decomposing model:')
     for name, module in reversed(list(model.features._modules.items())):
         if isinstance(module, nn.Conv2d):
             logger.info(name)
             cpd_layer = cp_decomposition_conv_layer(module, args.rank)
             model.features._modules[name] = cpd_layer
-            # _, decomposed_acc, _ = validate(val_loader, model, criterion)
-            # model, epoch = finetune(model, train_loader, val_loader, num_epochs=args.dcp_epochs,
-            #                         max_num_epochs=args.dcp_max_epochs, ori_acc=ori_acc, acc_drop_threshold=args.dcp_acc_drop)
-            # _, finetuned_acc, _ = validate(val_loader, model, criterion)
-            # wandb.log({'layer': int(name[4:]), 'decomposed_acc': decomposed_acc,
-            #           'finetuned_acc': finetuned_acc, 'epoch_used': epoch})
-
-    # utils.save_checkpoint({
-    #     'state_dict': model.state_dict(),
-    # }, True, args.job_dir)
+            _, decomposed_acc, _ = validate(val_loader, model, criterion)
+            model, epoch = finetune(model, train_loader, val_loader, num_epochs=args.dcp_epochs,
+                                    max_num_epochs=args.dcp_max_epochs, ori_acc=ori_acc, acc_drop_threshold=args.dcp_acc_drop)
+            _, finetuned_acc, _ = validate(val_loader, model, criterion)
+            wandb.log({'layer': int(name[4:]), 'decomposed_acc': decomposed_acc,
+                      'finetuned_acc': finetuned_acc, 'epoch_used': epoch})
 
     # inspect decomposed model
     logger.info('Evaluating decomposed model:')
     _, decomposed_acc, _ = validate(val_loader, model, criterion)
-    wandb.log({'decomposed_acc': decomposed_acc})
+    wandb.log({'final_decomposed_acc': decomposed_acc})
 
     # fine-tuning
     logger.info('Finetuning model:')
@@ -166,7 +160,7 @@ def main():
     start_epoch = 0
     best_top1_acc = 0
 
-    # train the model
+    # train the modelI
     epoch = start_epoch
     while epoch < args.epochs:
         train(epoch,  train_loader, model, criterion, optimizer, scheduler)

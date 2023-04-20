@@ -1,6 +1,7 @@
 import os
 import datetime
 import argparse
+import copy
 import wandb
 import torch
 import torch.nn as nn
@@ -70,18 +71,18 @@ if not os.path.isdir(args.job_dir):
 
 utils.record_config(args)
 now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-logger = utils.get_logger(os.path.join(args.job_dir, 'logger_decomposition'+now+'.txt'))
+logger = utils.get_logger(os.path.join(
+    args.job_dir, 'logger_decomposition'+now+'.txt'))
 
 
 def finetune(model, train_loader, val_loader, num_epochs, max_num_epochs, ori_acc, acc_drop_threshold):
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(
     ), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer, step_size=int(max_num_epochs/2), gamma=0.1)
-
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=max_num_epochs)
     _, best_top1_acc, _ = validate(val_loader, model, criterion)
-    best_model_state = model.state_dict()
+    best_model_state = copy.deepcopy(model.state_dict())
     epoch = 0
     acc_drop = ori_acc - best_top1_acc
     while epoch < max_num_epochs:
@@ -90,11 +91,14 @@ def finetune(model, train_loader, val_loader, num_epochs, max_num_epochs, ori_ac
 
         if valid_top1_acc > best_top1_acc:
             best_top1_acc = valid_top1_acc
-            best_model_state = model.state_dict()
+            best_model_state = copy.deepcopy(model.state_dict())
 
-        acc_drop = ori_acc - best_top1_acc
-        if (acc_drop < acc_drop_threshold) and (epoch > num_epochs-1):
-            break
+        cur_lr = optimizer.param_groups[0]["lr"]
+        wandb.log({'best_acc': max(valid_top1_acc, best_top1_acc),
+                  'top1': valid_top1_acc, 'lr': cur_lr})
+        # acc_drop = ori_acc - best_top1_acc
+        # if (acc_drop < acc_drop_threshold) and (epoch > num_epochs-1):
+        #     break
         epoch += 1
 
     model.load_state_dict(best_model_state)

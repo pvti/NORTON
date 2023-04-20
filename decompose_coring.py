@@ -154,8 +154,8 @@ def main():
     logger.info('Finetuning model:')
     optimizer = torch.optim.SGD(model.parameters(
     ), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=args.lr, div_factor=args.div_factor, epochs=args.epochs, steps_per_epoch=len(
-        train_loader), pct_start=args.pct_start, final_div_factor=args.final_div_factor)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=args.epochs)
 
     start_epoch = 0
     best_top1_acc = 0

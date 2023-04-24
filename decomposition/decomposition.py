@@ -7,28 +7,29 @@ from tqdm.auto import tqdm
 from .CPDLayers import CPDLayer
 
 
-def cp_decompose_model(model, rank, exclude_first_conv=False, passed_first_conv=False):
-    for name, module in model._modules.items():
-        if len(list(module.children())) > 0:
-            # recurse
-            model._modules[name] = cp_decompose_model(
-                module, rank, exclude_first_conv, passed_first_conv)
-        elif type(module) == nn.Conv2d:
-            if passed_first_conv is False:
-                passed_first_conv = True
-                if exclude_first_conv is True:
-                    continue
+tl.set_backend("pytorch")
 
-            conv_layer = module
-            decomposed = cp_decomposition_conv_layer(conv_layer, rank)
-            model._modules[name] = decomposed
 
+def decompose(model, rank):
+    for name, module in model.features._modules.items():
+        if isinstance(module, nn.Conv2d):
+            cpd_layer = decompose_conv_layer(module, rank)
+            model.features._modules[name] = cpd_layer
     return model
 
 
-def cp_decomposition_conv_layer(layer, rank):
+def reconstruct(model):
+    for name, module in model.features._modules.items():
+        if isinstance(module, CPDLayer):
+            conv_layer = construct_conv_layer(module)
+            model.features._modules[name] = conv_layer
+    return model
+
+
+def decompose_conv_layer(layer, rank):
     """ Gets a Conv2D layer and a target rank, 
-        returns a CPDLayer object with the decomposition """
+        returns a CPDLayer object with the decomposition
+    """
 
     padding = layer.padding[0]
     kernel_size = layer.kernel_size[0]
@@ -46,14 +47,12 @@ def cp_decomposition_conv_layer(layer, rank):
         (Cout, kernel_size, rank), device=device, requires_grad=False)
 
     for i in tqdm(range(Cout)):
-        # head_factors[i], tail_factors[i], body_factors[i] = parafac(
-        #     W[i, :, :, :], rank=rank, init='random')[1]
         weight = W[i, :, :, :].to('cpu')
-        factors = parafac(weight, rank=rank, n_iter_max=1000,
-                          tol=1e-32, init='svd', svd='truncated_svd')[1]
-        head_factors[i] = factors[0].clone().detach().to(device)
-        body_factors[i] = factors[2].clone().detach().to(device)
-        tail_factors[i] = factors[1].clone().detach().to(device)
+        if torch.any(weight != 0):
+            _, factors = parafac(weight, rank=rank)
+            head_factors[i] = factors[0].clone().detach().to(device)
+            body_factors[i] = factors[2].clone().detach().to(device)
+            tail_factors[i] = factors[1].clone().detach().to(device)
 
     assert not torch.isnan(head_factors).any(
     ), "head_factors tensor from parafac is nan"
@@ -73,3 +72,34 @@ def cp_decomposition_conv_layer(layer, rank):
     cpd_layer.tail.bias.data.copy_(layer.bias.data)
 
     return cpd_layer
+
+
+def construct_conv_layer(layer: CPDLayer):
+    """ Gets a CPDLayer, returns a Conv2d layer via CPD reconstruction
+    """
+
+    padding = layer.padding
+    kernel_size = layer.kernel_size
+    Cin = layer.in_channels
+    Cout = layer.out_channels
+    conv2d = nn.Conv2d(Cin, Cout, kernel_size=kernel_size, padding=padding)
+    with torch.no_grad():
+        weight = torch.zeros_like(conv2d.weight.data)
+
+        # Get the factor matrices
+        head_factors = layer.head.weight.data
+        body_factors = layer.body.weight.data
+        tail_factors = layer.tail.weight.data
+
+        head_factors = head_factors.permute(1, 0, 2)
+        body_factors = body_factors.permute(0, 2, 1)
+        tail_factors = tail_factors.permute(0, 2, 1)
+
+        for i in tqdm(range(Cout)):
+            factors = [head_factors[i], tail_factors[i], body_factors[i]]
+            weight[i] = tl.cp_to_tensor((None, factors), mask=None)
+
+        conv2d.weight.data.copy_(weight)
+        conv2d.bias.data.copy_(layer.tail.bias.data)
+
+    return conv2d

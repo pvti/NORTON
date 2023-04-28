@@ -2,7 +2,8 @@
 import os
 import sys
 import shutil
-import time, datetime
+import time
+import datetime
 import logging
 import numpy as np
 from PIL import Image
@@ -14,7 +15,6 @@ import torch.nn as nn
 import torch.utils
 
 
-'''record configurations'''
 class record_config():
     def __init__(self, args):
         now = datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
@@ -53,25 +53,28 @@ def get_logger(file_path):
 
     return logger
 
-#label smooth
+
 class CrossEntropyLabelSmooth(nn.Module):
 
-  def __init__(self, num_classes, epsilon):
-    super(CrossEntropyLabelSmooth, self).__init__()
-    self.num_classes = num_classes
-    self.epsilon = epsilon
-    self.logsoftmax = nn.LogSoftmax(dim=1)
+    def __init__(self, num_classes, epsilon):
+        super(CrossEntropyLabelSmooth, self).__init__()
+        self.num_classes = num_classes
+        self.epsilon = epsilon
+        self.logsoftmax = nn.LogSoftmax(dim=1)
 
-  def forward(self, inputs, targets):
-    log_probs = self.logsoftmax(inputs)
-    targets = torch.zeros_like(log_probs).scatter_(1, targets.unsqueeze(1), 1)
-    targets = (1 - self.epsilon) * targets + self.epsilon / self.num_classes
-    loss = (-targets * log_probs).mean(0).sum()
-    return loss
+    def forward(self, inputs, targets):
+        log_probs = self.logsoftmax(inputs)
+        targets = torch.zeros_like(log_probs).scatter_(
+            1, targets.unsqueeze(1), 1)
+        targets = (1 - self.epsilon) * targets + \
+            self.epsilon / self.num_classes
+        loss = (-targets * log_probs).mean(0).sum()
+        return loss
 
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
+
     def __init__(self, name, fmt=':f'):
         self.name = name
         self.fmt = fmt
@@ -143,7 +146,6 @@ def accuracy(output, target, topk=(1,)):
             correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
-
 
 
 def progress_bar(current, total, msg=None):

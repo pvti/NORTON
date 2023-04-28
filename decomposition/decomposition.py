@@ -10,28 +10,23 @@ from .CPDLayers import CPDLayer
 tl.set_backend("pytorch")
 
 
-def decompose(model, rank):
-    for name, module in model.features._modules.items():
+def decompose(model, rank, n_iter_max=300, n_iter_singular_error=3):
+    for name, module in model._modules.items():
         if isinstance(module, nn.Conv2d):
-            cpd_layer = decompose_conv_layer(module, rank)
-            model.features._modules[name] = cpd_layer
+            model._modules[name] = decompose_conv_layer(
+                module, rank, n_iter_max, n_iter_singular_error)
+        elif len(list(module.children())) > 0:
+            # recurse
+            model._modules[name] = decompose(module, rank)
+
     return model
 
 
-def reconstruct(model):
-    for name, module in model.features._modules.items():
-        if isinstance(module, CPDLayer):
-            conv_layer = construct_conv_layer(module)
-            model.features._modules[name] = conv_layer
-    return model
-
-
-def decompose_conv_layer(layer, rank):
+def decompose_conv_layer(layer: nn.Conv2d, rank: int, n_iter_max=300, n_iter_singular_error=3):
     """ Gets a Conv2D layer and a target rank, 
         returns a CPDLayer object with the decomposition
     """
 
-    padding = layer.padding[0]
     kernel_size = layer.kernel_size[0]
     Cin = layer.in_channels
     Cout = layer.out_channels
@@ -47,12 +42,19 @@ def decompose_conv_layer(layer, rank):
         (Cout, kernel_size, rank), device=device, requires_grad=False)
 
     for i in tqdm(range(Cout)):
-        weight = W[i, :, :, :].to('cpu')
-        if torch.any(weight != 0):
-            _, factors = parafac(weight, rank=rank)
-            head_factors[i] = factors[0].clone().detach().to(device)
-            body_factors[i] = factors[2].clone().detach().to(device)
-            tail_factors[i] = factors[1].clone().detach().to(device)
+        weight = W[i, :, :, :]
+        if torch.any(weight) != 0:
+            success = False
+            count = 0
+            while not success and count < n_iter_singular_error:
+                try:
+                    _, factors = parafac(
+                        weight, rank=rank, n_iter_max=n_iter_max, init='random')
+                    head_factors[i], tail_factors[i], body_factors[i] = factors
+                    success = True
+                except torch._C._LinAlgError:
+                    count += 1
+                    pass
 
     assert not torch.isnan(head_factors).any(
     ), "head_factors tensor from parafac is nan"
@@ -65,41 +67,14 @@ def decompose_conv_layer(layer, rank):
     body_factors = body_factors.permute(0, 2, 1)
     tail_factors = tail_factors.permute(0, 2, 1)
 
-    cpd_layer = CPDLayer(Cin, Cout, rank, kernel_size, padding, device)
-    cpd_layer.head.weight.data.copy_(head_factors.detach())
-    cpd_layer.body.weight.data.copy_(body_factors.detach())
-    cpd_layer.tail.weight.data.copy_(tail_factors.detach())
-    cpd_layer.tail.bias.data.copy_(layer.bias.data)
+    biased = (layer.bias != None)
+    cpd_layer = CPDLayer(Cin, Cout, rank, kernel_size,
+                         layer.stride[0],
+                         layer.padding[0],
+                         head_factors.detach(),
+                         body_factors.detach(),
+                         tail_factors.detach(),
+                         biased, layer.bias,
+                         device)
 
     return cpd_layer
-
-
-def construct_conv_layer(layer: CPDLayer):
-    """ Gets a CPDLayer, returns a Conv2d layer via CPD reconstruction
-    """
-
-    padding = layer.padding
-    kernel_size = layer.kernel_size
-    Cin = layer.in_channels
-    Cout = layer.out_channels
-    conv2d = nn.Conv2d(Cin, Cout, kernel_size=kernel_size, padding=padding)
-    with torch.no_grad():
-        weight = torch.zeros_like(conv2d.weight.data)
-
-        # Get the factor matrices
-        head_factors = layer.head.weight.data
-        body_factors = layer.body.weight.data
-        tail_factors = layer.tail.weight.data
-
-        head_factors = head_factors.permute(1, 0, 2)
-        body_factors = body_factors.permute(0, 2, 1)
-        tail_factors = tail_factors.permute(0, 2, 1)
-
-        for i in tqdm(range(Cout)):
-            factors = [head_factors[i], tail_factors[i], body_factors[i]]
-            weight[i] = tl.cp_to_tensor((None, factors), mask=None)
-
-        conv2d.weight.data.copy_(weight)
-        conv2d.bias.data.copy_(layer.tail.bias.data)
-
-    return conv2d

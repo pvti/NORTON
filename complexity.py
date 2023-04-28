@@ -2,23 +2,19 @@ import argparse
 import torch
 import torch.nn as nn
 from torchprofile import profile_macs
-from models.cifar10.vgg_cpd import vgg_16_bn_cpd
 from models.cifar10.vgg import vgg_16_bn
 import utils.common as utils
-# from ptflops import get_model_complexity_info
 
 
 def parse_args():
-    parser = argparse.ArgumentParser("Compute model complexity")
+    parser = argparse.ArgumentParser('Compute model complexity')
 
-    parser.add_argument('--arch', type=str,
-                        default='vgg_16_bn', help='architecture')
-    parser.add_argument('--decomposer', default='cp',
-                        type=str, help='decomposer')
-    parser.add_argument("-r", "--rank", dest="rank", type=int, default=3,
-                        help="use pre-specified rank for all layers")
-    parser.add_argument("-cpr", '--compress_rate', type=str, default='[0.]*100',
-                        help='compress rate of each conv')
+    parser.add_argument('--arch', type=str, default='vgg_16_bn',
+                        choices=('vgg_16_bn', 'resnet_56'), help='architecture')
+    parser.add_argument('-r', '--rank', dest='rank', type=int, default=6,
+                        help='use pre-specified rank for all layers')
+    parser.add_argument('-cpr', '--compress_rate', type=str, default='[0.]*100',
+                        help='list of compress rate of each layer')
 
     return parser.parse_args()
 
@@ -45,15 +41,14 @@ def get_model_macs(model, inputs) -> int:
 
 if __name__ == '__main__':
     args = parse_args()
-    original_model = vgg_16_bn().cuda()
 
-    # with torch.cuda.device(0):
-    #     macs, params = get_model_complexity_info(original_model, (3, 32, 32), as_strings=True,
-    #                                              print_per_layer_stat=True, verbose=True)
+    original_model = vgg_16_bn().cuda()
     original_params = get_num_parameters(original_model)
     print('original_params = ', original_params)
+
     compress_rate = utils.get_cpr(args.compress_rate)
-    model = vgg_16_bn_cpd(args.rank, compress_rate).cuda()
+
+    model = vgg_16_bn(compress_rate, args.rank).cuda()
     print(model)
     params = get_num_parameters(model)
     reduced = (1-params/original_params)*100

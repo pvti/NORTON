@@ -11,7 +11,7 @@ class CPDHead(nn.Module):
         in_channels (int): Number of input channels.
         out_channels (int): Number of output channels.
         rank (int): Rank of the weight tensor.
-        padding (int): Amount of padding to add to the input tensor.
+        padding (int): Amount of padding to add to the input tensor. Defaults to 1.
         weight (torch.Tensor, optional): Weight tensor of shape (in_channels, out_channels, rank).
             If None, the tensor is initialized using Xavier initialization.
 
@@ -24,7 +24,7 @@ class CPDHead(nn.Module):
 
     """
 
-    def __init__(self, in_channels, out_channels, rank, padding, weight=None, device=None):
+    def __init__(self, in_channels, out_channels, rank, padding=1, weight=None, device=None):
         super(CPDHead, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -56,8 +56,7 @@ class CPDHead(nn.Module):
 
         # Add padding to input
         batch_size = input.shape[0]
-        with torch.no_grad():
-            padded_I = nn.functional.pad(input, pad=[self.padding]*4)
+        padded_I = nn.functional.pad(input, pad=[self.padding]*4)
         padded_I = padded_I.permute(0, 2, 3, 1)
 
         # Calculate output size after padding
@@ -90,8 +89,6 @@ class CPDHead(nn.Module):
             # Update weight tensor and out_channels
             self.weight.set_(self.weight[:, selected_index])
             self.out_channels = len(selected_index)
-
-        return selected_index
 
     def update_in_channels(self, selected_index):
         """
@@ -133,7 +130,8 @@ class CPDBody(nn.Module):
         out_channels (int): Number of output channels.
         rank (int): Rank of the weight tensor.
         kernel_size (int): Kernel size of the weight tensor.
-        padding (int): Amount of padding to add to the input tensor.
+        stride (int, optional): Stride. Defaults to 1.
+        padding (int): Amount of padding to add to the input tensor. Defaults to 1.
         weight (torch.Tensor, optional): Weight tensor of shape (out_channels, rank, kernel_size).
             If None, the tensor is initialized using Xavier initialization.
 
@@ -142,17 +140,19 @@ class CPDBody(nn.Module):
         out_channels (int): Number of output channels.
         rank (int): Rank of the weight tensor.
         kernel_size (int): Kernel size of the weight tensor.
+        stride (int): Stride.
         padding (int): Amount of padding to add to the input tensor.
         weight (torch.Tensor): Weight tensor.
 
     """
 
-    def __init__(self, in_channels, out_channels, rank, kernel_size, padding, weight=None, device=None):
+    def __init__(self, in_channels, out_channels, rank, kernel_size, stride=1, padding=1, weight=None, device=None):
         super(CPDBody, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.rank = rank
         self.kernel_size = kernel_size
+        self.stride = stride
         self.padding = padding
 
         if weight is not None:
@@ -187,8 +187,8 @@ class CPDBody(nn.Module):
         # Add a new axis to B for broadcasting, B's shape becomes (1, 1, Cout, r, 1, d)
         B_expanded = self.weight[None, None, :, :, None, :]
         # Assuming 'Oc' is a 5-dimensional and 'w' and 'd' are the window width and depth, respectively
-        window_indices = torch.arange(
-            w)[:, None] + torch.arange(self.kernel_size)
+        window_indices = torch.arange(start=0, end=w, step=self.stride)[
+            :, None] + torch.arange(self.kernel_size)
         Oc_expanded = Oc[:, :, :, :, window_indices]
 
         # Perform the element-wise multiplication and sum over the last axis (d)
@@ -236,6 +236,7 @@ class CPDBody(nn.Module):
                 f"out_channels={self.out_channels}, "
                 f"rank={self.rank}, "
                 f"kernel_size={self.kernel_size}, "
+                f"stride={self.stride}, "
                 f"padding={self.padding})"
                 )
 
@@ -249,9 +250,11 @@ class CPDTail(nn.Module):
         out_channels (int): Number of output channels.
         rank (int): Rank of the weight tensor.
         kernel_size (int): Kernel size of the weight tensor.
-        padding (int): Amount of padding to add to the input tensor.
+        stride (int, optional): Stride. Defaults to 1.
+        padding (int): Amount of padding to add to the input tensor. Defaults to 1.
         weight (torch.Tensor, optional): Weight tensor of shape (out_channels, rank, kernel_size).
             If None, the tensor is initialized using Xavier initialization.
+        biased (bool, optional): Whether to include a bias term. Default is True.
         bias (torch.Tensor, optional): Bias tensor of shape (out_channels,).
             If None, the tensor is initialized to zero.
 
@@ -260,19 +263,22 @@ class CPDTail(nn.Module):
         out_channels (int): Number of output channels.
         rank (int): Rank of the weight tensor.
         kernel_size (int): Kernel size of the weight tensor.
+        stride (int): Stride.
         padding (int): Amount of padding to add to the input tensor.
         weight (torch.Tensor): Weight tensor.
-        bias (torch.Tensor): Bias tensor.
+        bias (torch.Tensor or None): Bias tensor. If biased=False, this will be None.
 
     """
 
-    def __init__(self, in_channels, out_channels, rank, kernel_size, padding, weight=None, bias=None, device=None):
+    def __init__(self, in_channels, out_channels, rank, kernel_size, stride=1, padding=1, weight=None, biased=True, bias=None, device=None):
         super(CPDTail, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.rank = rank
         self.kernel_size = kernel_size
+        self.stride = stride
         self.padding = padding
+        self.biased = biased
 
         if weight is not None:
             assert weight.shape == (
@@ -284,12 +290,14 @@ class CPDTail(nn.Module):
 
         self.weight = nn.Parameter(weight)
 
-        if bias is not None:
-            assert bias.shape == (out_channels,), "Invalid bias shape"
+        if biased:
+            if bias is not None:
+                assert bias.shape == (out_channels,), "Invalid bias shape"
+            else:
+                bias = torch.zeros(out_channels, device=device)
+            self.bias = nn.Parameter(bias)
         else:
-            bias = torch.zeros(out_channels, device=device)
-
-        self.bias = nn.Parameter(bias)
+            self.bias = None
 
     def forward(self, input):
         """
@@ -314,8 +322,8 @@ class CPDTail(nn.Module):
         A_expanded = self.weight[None, None, :, :, None, :]
 
         # Assuming 'Ob' is a 5-dimensional and 'h' and 'd' are the window width and depth, respectively
-        window_indices = torch.arange(
-            h)[:, None] + torch.arange(self.kernel_size)
+        window_indices = torch.arange(start=0, end=h, step=self.stride)[
+            :, None] + torch.arange(self.kernel_size)
         Ob_expanded = Ob[:, :, :, :, window_indices]
 
         # Perform the element-wise multiplication and sum over the last axis (d)
@@ -323,7 +331,10 @@ class CPDTail(nn.Module):
         Oa = Oa.permute(0, 4, 1, 2, 3)
 
         # Step 4: Compute O
-        output = torch.sum(Oa, dim=-1) + self.bias
+        output = torch.sum(Oa, dim=-1)
+
+        if self.biased:
+            output += self.bias
 
         output = output.permute(0, 3, 1, 2)
 
@@ -341,7 +352,8 @@ class CPDTail(nn.Module):
         with torch.no_grad():
             # Update weight, bias tensor and out_channels
             self.weight.set_(self.weight[selected_index, :])
-            self.bias.set_(self.bias[selected_index])
+            if self.biased:
+                self.bias.set_(self.bias[selected_index])
             self.out_channels = len(selected_index)
 
     def update_in_channels(self, selected_index):
@@ -369,7 +381,9 @@ class CPDTail(nn.Module):
                 f"out_channels={self.out_channels}, "
                 f"rank={self.rank}, "
                 f"kernel_size={self.kernel_size}, "
-                f"padding={self.padding})"
+                f"stride={self.stride}, "
+                f"padding={self.padding}, "
+                f"biased={self.biased})"
                 )
 
 
@@ -383,13 +397,20 @@ class CPDLayer(nn.Sequential):
         out_channels (int): Number of output channels.
         rank (int): Rank of the weight tensor used in the CPD decomposition.
         kernel_size (int, optional): Size of the convolution kernel. Defaults to 3.
+        stride (int, optional): Stride. Defaults to 1.
         padding (int, optional): Amount of padding to add to the input tensor. Defaults to 1.
+        head_weight (torch.Tensor): Weight tensor for CPDHead.
+        body_weight (torch.Tensor): Weight tensor for CPDBody.
+        tail_weight (torch.Tensor): Weight tensor for CPDTail.
+        biased (bool, optional): Whether to include a bias term. Default is True.
+        bias (torch.Tensor, optional): Bias tensor for CPDTail.
 
     Attributes:
         in_channels (int): Number of input channels.
         out_channels (int): Number of output channels.
         rank (int): Rank of the weight tensor.
         kernel_size (int): Kernel size of the weight tensor.
+        stride (int): Stride.
         padding (int): Amount of padding to add to the input tensor.
         head (CPDHead): The head module of the CPD-based convolution layer.
         body (CPDBody): The body module of the CPD-based convolution layer.
@@ -397,22 +418,25 @@ class CPDLayer(nn.Sequential):
 
     """
 
-    def __init__(self, in_channels, out_channels, rank, kernel_size=3, padding=1, device=None):
+    def __init__(self, in_channels, out_channels, rank, kernel_size=3, stride=1, padding=1, head_weight=None, body_weight=None, tail_weight=None, biased=True, bias=None, device=None):
         super(CPDLayer, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.rank = rank
         self.kernel_size = kernel_size
+        self.stride = stride
         self.padding = padding
+        self.biased = biased
         self.device = device
-        self.add_module("head", CPDHead(
-            in_channels, out_channels, rank, padding, device=device))
-        self.add_module("body", CPDBody(in_channels, out_channels,
-                        rank, kernel_size, padding, device=device))
-        self.add_module("tail", CPDTail(in_channels, out_channels,
-                        rank, kernel_size, padding, device=device))
 
-    def prune(self, compress_rate):
+        self.add_module("head", CPDHead(in_channels, out_channels,
+                        rank, padding, head_weight, device))
+        self.add_module("body", CPDBody(in_channels, out_channels,
+                        rank, kernel_size, stride, padding, body_weight, device))
+        self.add_module("tail", CPDTail(in_channels, out_channels,
+                        rank, kernel_size, stride, padding, tail_weight, biased, bias, device))
+
+    def prune(self, compress_rate, criterion):
         """
         Prunes the weights of each sublayer of the CPDLayer based on a given compression rate.
 
@@ -429,7 +453,7 @@ class CPDLayer(nn.Sequential):
             head_weight = self.head.weight.detach().clone()
             head_weight = head_weight.transpose(1, 0)
         saliency = get_saliency(
-            head_weight, self.body.weight, self.tail.weight)
+            head_weight, self.body.weight, self.tail.weight, criterion)
         _, selected_index = torch.topk(saliency, n_keep)
         self.head.prune(selected_index)
         self.body.prune(selected_index)

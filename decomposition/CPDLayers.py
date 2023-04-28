@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from pruning.saliency import get_saliency
 
 
 class CPDHead(nn.Module):
@@ -74,36 +73,6 @@ class CPDHead(nn.Module):
             batch_size, padded_h, padded_w, self.out_channels, self.rank)
 
         return output
-
-    def prune(self, selected_index):
-        """
-        Prunes the filters of the CPDHead based on given indices of filters to keep.
-
-        Args:
-            selected_index (List[int]): List of the indices of filters to keep.
-
-        Returns:
-            None.
-        """
-        with torch.no_grad():
-            # Update weight tensor and out_channels
-            self.weight.set_(self.weight[:, selected_index])
-            self.out_channels = len(selected_index)
-
-    def update_in_channels(self, selected_index):
-        """
-        Updates the number of input channels and weight tensor of the CPDHead
-        based on a given list of indices of the filters to keep.
-
-        Args:
-            selected_index (List[int]): A list containing the indices of the filters to keep.
-
-        Returns:
-            None.
-        """
-        self.in_channels = len(selected_index)
-        with torch.no_grad():
-            self.weight.set_(self.weight[selected_index, :])
 
     def __repr__(self):
         """
@@ -195,33 +164,6 @@ class CPDBody(nn.Module):
         output = torch.sum(Oc_expanded * B_expanded, dim=-1)
 
         return output
-
-    def prune(self, selected_index):
-        """
-        Prunes the filters of the CPDBody based on given indices of filters to keep.
-
-        Args:
-            selected_index (List[int]): List of the indices of filters to keep.
-
-        Returns:
-            None.
-        """
-        with torch.no_grad():
-            # Update weight tensor and out_channels
-            self.weight.set_(self.weight[selected_index, :])
-            self.out_channels = len(selected_index)
-
-    def update_in_channels(self, selected_index):
-        """
-        Updates the number of input channels of the CPDBody based on a given list of indices of the filters to keep.
-
-        Args:
-            selected_index (List[int]): A list containing the indices of the filters to keep.
-
-        Returns:
-            None.
-        """
-        self.in_channels = len(selected_index)
 
     def __repr__(self):
         """
@@ -340,34 +282,6 @@ class CPDTail(nn.Module):
 
         return output
 
-    def prune(self, selected_index):
-        """
-        Prunes the filters of the CPDTail based on a given number of filters to keep.
-
-        Args:
-            n_keep (int): Number of filters to keep.
-
-        Returns:
-        """
-        with torch.no_grad():
-            # Update weight, bias tensor and out_channels
-            self.weight.set_(self.weight[selected_index, :])
-            if self.biased:
-                self.bias.set_(self.bias[selected_index])
-            self.out_channels = len(selected_index)
-
-    def update_in_channels(self, selected_index):
-        """
-        Updates the number of input channels of the CPDTail based on given indices of filters to keep.
-
-        Args:
-            selected_index (List[int]): List of the indices of filters to keep.
-
-        Returns:
-            None.
-        """
-        self.in_channels = len(selected_index)
-
     def __repr__(self):
         """
         Return a string representation of the module.
@@ -435,44 +349,6 @@ class CPDLayer(nn.Sequential):
                         rank, kernel_size, stride, padding, body_weight, device))
         self.add_module("tail", CPDTail(in_channels, out_channels,
                         rank, kernel_size, stride, padding, tail_weight, biased, bias, device))
-
-    def prune(self, compress_rate, criterion):
-        """
-        Prunes the weights of each sublayer of the CPDLayer based on a given compression rate.
-
-        Args:
-            compress_rate (float): A value between 0 and 1 indicating the percentage of filters to prune.
-
-        Returns:
-            selected_index (Tuple[List[int], List[int], List[int]]): A tuple containing the index of the filters to keep
-            in the head, body, and tail sublayers respectively.
-        """
-        n_keep = int(self.out_channels * (1 - compress_rate))
-        self.out_channels = n_keep
-        with torch.no_grad():
-            head_weight = self.head.weight.detach().clone()
-            head_weight = head_weight.transpose(1, 0)
-        saliency = get_saliency(
-            head_weight, self.body.weight, self.tail.weight, criterion)
-        _, selected_index = torch.topk(saliency, n_keep)
-        self.head.prune(selected_index)
-        self.body.prune(selected_index)
-        self.tail.prune(selected_index)
-
-        return selected_index
-
-    def update_in_channels(self, selected_index):
-        """
-        Update the self.in_channels to length of selected_index and call the update_in_channels method of the sub-layers.
-
-        Args:
-            selected_index (List[int]): A list containing the index of the filters to keep
-            in the head sublayer.
-        """
-        self.in_channels = len(selected_index)
-        self.head.update_in_channels(selected_index)
-        self.body.update_in_channels(selected_index)
-        self.tail.update_in_channels(selected_index)
 
 
 if __name__ == "__main__":

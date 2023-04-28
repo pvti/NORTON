@@ -1,31 +1,53 @@
 
 import torch.nn as nn
 import torch.nn.functional as F
+from decomposition.CPDLayers import CPDLayer
 
 
-def adapt_channel(num_layers):
+def adapt_channel(compress_rate, num_layers):
 
     if num_layers == 56:
+        stage_repeat = [9, 9, 9]
         stage_out_channel = [16] + [16] * 9 + [32] * 9 + [64] * 9
     elif num_layers == 110:
+        stage_repeat = [18, 18, 18]
         stage_out_channel = [16] + [16] * 18 + [32] * 18 + [64] * 18
+
+    stage_oup_cprate = []
+    stage_oup_cprate += [compress_rate[0]]
+    for i in range(len(stage_repeat)-1):
+        stage_oup_cprate += [compress_rate[i+1]] * stage_repeat[i]
+    stage_oup_cprate += [0.] * stage_repeat[-1]
+    mid_cprate = compress_rate[len(stage_repeat):]
 
     overall_channel = []
     mid_channel = []
     for i in range(len(stage_out_channel)):
         if i == 0:
-            overall_channel += [int(stage_out_channel[i])]
+            overall_channel += [int(stage_out_channel[i]
+                                    * (1-stage_oup_cprate[i]))]
         else:
-            overall_channel += [int(stage_out_channel[i])]
-            mid_channel += [int(stage_out_channel[i])]
+            overall_channel += [int(stage_out_channel[i]
+                                    * (1-stage_oup_cprate[i]))]
+            mid_channel += [int(stage_out_channel[i] * (1-mid_cprate[i-1]))]
 
     return overall_channel, mid_channel
 
 
-def conv3x3(in_planes, out_planes, stride=1):
-    """3x3 convolution with padding"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=1, bias=False)
+def conv3x3(in_planes, out_planes, rank=0, stride=1):
+    """
+    3x3 convolution with padding
+    If rank > 0 return CPDLayer
+    """
+    layer = None
+    if rank == 0:
+        layer = nn.Conv2d(in_planes, out_planes,
+                          kernel_size=3, stride=stride, padding=1, bias=False)
+    else:
+        layer = CPDLayer(in_planes, out_planes, rank=rank,
+                         kernel_size=3, stride=stride, padding=1, biased=False)
+
+    return layer
 
 
 class LambdaLayer(nn.Module):
@@ -40,15 +62,15 @@ class LambdaLayer(nn.Module):
 class BasicBlock(nn.Module):
     expansion = 1
 
-    def __init__(self, midplanes, inplanes, planes, stride=1):
+    def __init__(self, midplanes, inplanes, planes, rank=0, stride=1):
         super(BasicBlock, self).__init__()
         self.inplanes = inplanes
         self.planes = planes
-        self.conv1 = conv3x3(inplanes, midplanes, stride)
+        self.conv1 = conv3x3(inplanes, midplanes, stride=stride, rank=rank)
         self.bn1 = nn.BatchNorm2d(midplanes)
         self.relu1 = nn.ReLU(inplace=True)
 
-        self.conv2 = conv3x3(midplanes, planes)
+        self.conv2 = conv3x3(midplanes, planes, rank=rank)
         self.bn2 = nn.BatchNorm2d(planes)
         self.relu2 = nn.ReLU(inplace=True)
         self.stride = stride
@@ -80,13 +102,14 @@ class BasicBlock(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, num_layers, num_classes=10):
+    def __init__(self, block, num_layers, compress_rate, rank=0, num_classes=10):
         super(ResNet, self).__init__()
         assert (num_layers - 2) % 6 == 0, 'depth should be 6n+2'
         n = (num_layers - 2) // 6
 
         self.num_layer = num_layers
-        self.overall_channel, self.mid_channel = adapt_channel(num_layers)
+        self.overall_channel, self.mid_channel = adapt_channel(
+            compress_rate, num_layers)
 
         self.layer_num = 0
         self.conv1 = nn.Conv2d(3, self.overall_channel[self.layer_num], kernel_size=3, stride=1, padding=1,
@@ -97,9 +120,9 @@ class ResNet(nn.Module):
         self.layer_num += 1
 
         #self.layers = nn.ModuleList()
-        self.layer1 = self._make_layer(block, blocks_num=n, stride=1)
-        self.layer2 = self._make_layer(block, blocks_num=n, stride=2)
-        self.layer3 = self._make_layer(block, blocks_num=n, stride=2)
+        self.layer1 = self._make_layer(block, blocks_num=n, rank=rank, stride=1)
+        self.layer2 = self._make_layer(block, blocks_num=n, rank=rank, stride=2)
+        self.layer3 = self._make_layer(block, blocks_num=n, rank=rank, stride=2)
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
@@ -108,15 +131,15 @@ class ResNet(nn.Module):
         else:
             self.linear = nn.Linear(64 * BasicBlock.expansion, num_classes)
 
-    def _make_layer(self, block, blocks_num, stride):
+    def _make_layer(self, block, blocks_num, rank, stride):
         layers = []
         layers.append(block(self.mid_channel[self.layer_num - 1], self.overall_channel[self.layer_num - 1],
-                            self.overall_channel[self.layer_num], stride))
+                            self.overall_channel[self.layer_num], rank=rank, stride=stride))
         self.layer_num += 1
 
         for i in range(1, blocks_num):
             layers.append(block(self.mid_channel[self.layer_num - 1], self.overall_channel[self.layer_num - 1],
-                                self.overall_channel[self.layer_num]))
+                                self.overall_channel[self.layer_num], rank=rank))
             self.layer_num += 1
 
         return nn.Sequential(*layers)
@@ -144,9 +167,9 @@ class ResNet(nn.Module):
         return x
 
 
-def resnet_56():
-    return ResNet(BasicBlock, 56)
+def resnet_56(compress_rate=[0.0]*30, rank=0):
+    return ResNet(BasicBlock, num_layers=56, compress_rate=compress_rate, rank=rank)
 
 
-def resnet_110():
-    return ResNet(BasicBlock, 110)
+def resnet_110(compress_rate=[0.0]*47, rank=0):
+    return ResNet(BasicBlock, num_layers=110, compress_rate=compress_rate, rank=rank)

@@ -70,11 +70,12 @@ def decompose_conv_layer(conv2d: nn.Conv2d, rank: int, n_iter_max=300, n_iter_si
     assert not torch.isnan(tail_factors).any(
     ), "tail_factors tensor from parafac is nan"
 
-    # instantiate CPDBlock. conv2d's bias is assigned to cpd_block.tail's bias
+    biased = (conv2d.bias != None)
+    # instantiate CPDBlock
     cpd_block = CPDBlock(Cin, Cout, rank, kernel_size,
                          conv2d.stride[0],
                          conv2d.padding[0],
-                         conv2d.bias,
+                         biased,
                          device)
 
     # assign factors to CPDBlock's weights
@@ -87,5 +88,7 @@ def decompose_conv_layer(conv2d: nn.Conv2d, rank: int, n_iter_max=300, n_iter_si
 
     tail_factors = tail_factors.permute(0, 2, 1).unsqueeze(2)
     cpd_block.tail.weight.data = tail_factors
+
+    cpd_block.tail.bias.data = conv2d.bias.data
 
     return cpd_block

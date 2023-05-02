@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from tqdm.auto import tqdm
 
-from .CPDLayers import CPDLayer
+from .CPDBlock import CPDBlock
 
 
 tl.set_backend("pytorch")
@@ -22,24 +22,31 @@ def decompose(model, rank, n_iter_max=300, n_iter_singular_error=3):
     return model
 
 
-def decompose_conv_layer(layer: nn.Conv2d, rank: int, n_iter_max=300, n_iter_singular_error=3):
-    """ Gets a Conv2D layer and a target rank, 
-        returns a CPDLayer object with the decomposition
+def decompose_conv_layer(conv2d: nn.Conv2d, rank: int, n_iter_max=300, n_iter_singular_error=3):
+    """
+    Decompose a Conv2d with CPD.
+
+    Args:
+        conv2d (nn.Conv2d): a Conv2d.
+        rank (int): rank.
+        n_iter_max (int): max number of iterations for parafac.
+        n_iter_singular_error (int): number of iterations for singular maxtrix error handler.
+
+    Returns:
+        cpd_block (CPDBlock): a CPDBlock.
+
     """
 
-    kernel_size = layer.kernel_size[0]
-    Cin = layer.in_channels
-    Cout = layer.out_channels
-    W = layer.weight.data
+    kernel_size = conv2d.kernel_size[0]
+    Cin = conv2d.in_channels
+    Cout = conv2d.out_channels
+    W = conv2d.weight.data
     device = W.get_device()
 
     # Initialize the factor matrices with zeros
-    head_factors = torch.zeros(
-        (Cout, Cin, rank), device=device, requires_grad=False)
-    body_factors = torch.zeros(
-        (Cout, kernel_size, rank), device=device, requires_grad=False)
-    tail_factors = torch.zeros(
-        (Cout, kernel_size, rank), device=device, requires_grad=False)
+    head_factors = torch.zeros((Cout, Cin, rank), device=device)
+    body_factors = torch.zeros((Cout, kernel_size, rank), device=device)
+    tail_factors = torch.zeros((Cout, kernel_size, rank), device=device)
 
     for i in tqdm(range(Cout)):
         weight = W[i, :, :, :]
@@ -63,18 +70,22 @@ def decompose_conv_layer(layer: nn.Conv2d, rank: int, n_iter_max=300, n_iter_sin
     assert not torch.isnan(tail_factors).any(
     ), "tail_factors tensor from parafac is nan"
 
-    head_factors = head_factors.permute(1, 0, 2)
-    body_factors = body_factors.permute(0, 2, 1)
-    tail_factors = tail_factors.permute(0, 2, 1)
-
-    biased = (layer.bias != None)
-    cpd_layer = CPDLayer(Cin, Cout, rank, kernel_size,
-                         layer.stride[0],
-                         layer.padding[0],
-                         head_factors.detach(),
-                         body_factors.detach(),
-                         tail_factors.detach(),
-                         biased, layer.bias,
+    # instantiate CPDBlock. conv2d's bias is assigned to cpd_block.tail's bias
+    cpd_block = CPDBlock(Cin, Cout, rank, kernel_size,
+                         conv2d.stride[0],
+                         conv2d.padding[0],
+                         conv2d.bias,
                          device)
 
-    return cpd_layer
+    # assign factors to CPDBlock's weights
+    for i in range(rank):
+        head_factor = head_factors[:, :, i].unsqueeze(-1).unsqueeze(-1)
+        cpd_block.head[i].weight.data = head_factor
+
+    body_factors = body_factors.permute(2, 0, 1).unsqueeze(-1)
+    cpd_block.body.weight.data = body_factors
+
+    tail_factors = tail_factors.permute(0, 2, 1).unsqueeze(2)
+    cpd_block.tail.weight.data = tail_factors
+
+    return cpd_block

@@ -1,6 +1,6 @@
 import torch.nn as nn
 from collections import OrderedDict
-from decomposition.CPDLayers import CPDLayer
+from decomposition.CPDBlock import CPDBlock
 
 
 defaultcfg = [64, 64, 'M', 128, 128, 'M', 256, 256,
@@ -42,7 +42,7 @@ class VGG(nn.Module):
                 cnt += 1
                 layer = None
                 if self.rank > 0:
-                    layer = CPDLayer(in_channels, x, self.rank,
+                    layer = CPDBlock(in_channels, x, self.rank,
                                      kernel_size=3, padding=1)
                 else:
                     layer = nn.Conv2d(in_channels, x, kernel_size=3, padding=1)
@@ -69,7 +69,7 @@ def vgg_16_bn(compress_rate=[0.0]*12, rank=0):
     Args:
         compress_rate (list[int]): Compression rate. Default to 0 for all layers.
         rank (int): Rank for CPD. Defaults to 0.
-            If 0, use the Conv2d, else use CPDLayer.
+            If 0, use the Conv2d, else use CPDBlock.
 
     Returns:
         A VGG object.

@@ -1,7 +1,7 @@
 
 import torch.nn as nn
 import torch.nn.functional as F
-from decomposition.CPDLayers import CPDLayer
+from decomposition.CPDBlock import CPDBlock
 
 
 def adapt_channel(compress_rate, num_layers):
@@ -37,14 +37,14 @@ def adapt_channel(compress_rate, num_layers):
 def conv3x3(in_planes, out_planes, rank=0, stride=1):
     """
     3x3 convolution with padding
-    If rank > 0 return CPDLayer
+    If rank > 0 return CPDBlock
     """
     layer = None
     if rank == 0:
         layer = nn.Conv2d(in_planes, out_planes,
                           kernel_size=3, stride=stride, padding=1, bias=False)
     else:
-        layer = CPDLayer(in_planes, out_planes, rank=rank,
+        layer = CPDBlock(in_planes, out_planes, rank=rank,
                          kernel_size=3, stride=stride, padding=1, biased=False)
 
     return layer

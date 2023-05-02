@@ -38,6 +38,7 @@ class CPDBlock(nn.Module):
         self.padding = padding
         self.device = device
 
+        # branch conv2d's output height and weight must be identical to input's
         self.head = nn.ModuleList([nn.Conv2d(in_channels,
                                              out_channels,
                                              kernel_size=1,
@@ -50,14 +51,14 @@ class CPDBlock(nn.Module):
                               rank,
                               kernel_size=(kernel_size, 1),
                               stride=(stride, 1),
-                              padding=(padding, 1),
+                              padding=(padding, 0),
                               bias=False,
                               device=device)
         self.tail = nn.Conv2d(rank,
                               out_channels,
                               kernel_size=(1, kernel_size),
                               stride=(1, stride),
-                              padding=(1, padding),
+                              padding=(0, padding),
                               bias=bias,
                               device=device)
 

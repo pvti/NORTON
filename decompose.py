@@ -93,6 +93,8 @@ def main():
     logger.info('Decomposing model:')
     model = decompose(model, args.rank,
                       args.n_iter_max, args.n_iter_singular_error)
+    _, dcp_acc, _ = validate(val_loader, model, criterion)
+    wandb.log({'decomposed_acc': dcp_acc})
 
     # finetune
     logger.info('Finetuning model:')

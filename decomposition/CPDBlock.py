@@ -1,10 +1,11 @@
 import torch
 import torch.nn as nn
+from collections import OrderedDict
 
 
 class CPDBlock(nn.Module):
     """
-    A convolutional module that implements the Candecomp-Parafac decomposition.
+    A convolutional module that implements the Candecomp-Parafac filter decomposition.
 
     Args:
         in_channels (int): Number of input channels.
@@ -22,9 +23,9 @@ class CPDBlock(nn.Module):
         kernel_size (int): Kernel size of the weight tensor.
         stride (int): Stride.
         padding (int): Amount of padding to add to the input tensor.
-        head (ModuleList): The head module of the CPD-based convolution layer.
-        body (Conv2d): The body module of the CPD-based convolution layer.
-        tail (Conv2d): The tail module of the CPD-based convolution layer.
+        pointwise (Conv2d): The pointwise module of the CPD-based convolution layer.
+        vertical (Conv2d): The vertical module of the CPD-based convolution layer.
+        horizontal (Conv2d): The horizontal module of the CPD-based convolution layer.
 
     """
 
@@ -38,29 +39,20 @@ class CPDBlock(nn.Module):
         self.padding = padding
         self.device = device
 
-        # branch conv2d's output height and weight must be identical to input's
-        self.head = nn.ModuleList([nn.Conv2d(in_channels,
-                                             out_channels,
-                                             kernel_size=1,
-                                             stride=1,
-                                             padding=0,
-                                             bias=False,
-                                             device=device)
-                                   for _ in range(rank)])
-        self.body = nn.Conv2d(out_channels,
-                              rank,
-                              kernel_size=(kernel_size, 1),
-                              stride=(stride, 1),
-                              padding=(padding, 0),
-                              bias=False,
-                              device=device)
-        self.tail = nn.Conv2d(rank,
-                              out_channels,
-                              kernel_size=(1, kernel_size),
-                              stride=(1, stride),
-                              padding=(0, padding),
-                              bias=bias,
-                              device=device)
+        channels = rank*out_channels
+
+        self.feature = nn.Sequential(OrderedDict([
+            ('pointwise', nn.Conv2d(in_channels, channels, 1, padding=0, bias=False)),
+            ('vertical', nn.Conv2d(channels, channels, kernel_size=(kernel_size, 1),
+                                   stride=stride, padding=(padding, 0), groups=channels, bias=False)),
+            ('horizontal', nn.Conv2d(channels, channels, kernel_size=(1, kernel_size),
+                                     stride=stride, padding=(0, padding), groups=channels, bias=False))
+        ]))
+
+        if bias:
+            self.bias = nn.Parameter(torch.zeros(out_channels, device=device))
+        else:
+            self.bias = None
 
     def forward(self, input):
         """
@@ -73,21 +65,14 @@ class CPDBlock(nn.Module):
             output (torch.Tensor): Output tensor of shape (batch_size, out_channels, height, width).
 
         """
-        assert input.shape[1] == self.in_channels, "Invalid input shape"
+        output = self.feature(input)
 
-        batch_size = input.shape[0]
-        height = input.shape[2]
-        width = input.shape[3]
+        output = output.view(
+            output.shape[0], self.rank, self.out_channels, *output.shape[2:])
+        output = torch.sum(output, dim=1)
 
-        output = torch.empty((batch_size, self.out_channels, height,
-                             width, self.rank), dtype=input.dtype, device=input.device)
-        for i in range(self.rank):
-            output[:, :, :, :, i] = self.head[i](input)
-        output = output.sum(dim=-1)
-
-        output = self.body(output)
-
-        output = self.tail(output)
+        if self.bias is not None:
+            output += self.bias.view(1, -1, 1, 1)
 
         return output
 

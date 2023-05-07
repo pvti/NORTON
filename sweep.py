@@ -11,12 +11,12 @@ import torch.utils.data
 
 import utils.common as utils
 from data import cifar10
-from models.cifar10.vgg_conv import vgg_16_bn
+from models.cifar10.vgg import vgg_16_bn
 from models.cifar10.resnet import resnet_56
 
 
 def parse_args():
-    parser = argparse.ArgumentParser('Cifar-10 scratch rank=1')
+    parser = argparse.ArgumentParser('Cifar-10 sweep training from scratch')
 
     parser.add_argument('--data_dir', type=str, default='../data',
                         help='path to dataset')
@@ -30,21 +30,17 @@ def parse_args():
                         help='batch size')
     parser.add_argument('--epochs', type=int, default=400,
                         help='num of fine-tuning epochs')
-    parser.add_argument('--lr', type=float, default=0.01,
+    parser.add_argument('--lr', type=float, default=0.1,
                         help='init learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
-    parser.add_argument('--weight_decay', type=float, default=5e-3,
+    parser.add_argument('--weight_decay', type=float, default=5e-4,
                         help='weight decay')
     parser.add_argument('--gpu', type=str, default='0',
                         help='Select gpu to use')
-    parser.add_argument('-r', '--rank', dest='rank', type=int, default=6,
+    parser.add_argument('-r', '--rank', dest='rank', type=int, default=1,
                         help='use pre-specified rank for all layers')
     parser.add_argument('-cpr', '--compress_rate', type=str, default='[0.]*100',
                         help='list of compress rate of each layer')
-    parser.add_argument('--n_iter_max', type=int, default=300,
-                        help='max number of iterations for parafac')
-    parser.add_argument('--n_iter_singular_error', type=int, default=3,
-                        help='number of iterations for singular maxtrix error handler')
     parser.add_argument('--name', type=str, default='',
                         help='wandb project name')
 
@@ -65,13 +61,31 @@ utils.record_config(args)
 now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
 logger = utils.get_logger(os.path.join(args.job_dir, now+'.txt'))
 
+sweep_configuration = {
+        'method': 'grid',
+        'name': 'sweep',
+        'metric': {
+            'goal': 'maximize',
+            'name': 'top1'
+        },
+        'parameters': {
+            'batch_size': {'values': [128, 256, 512]},
+            'lr': {'values': [0.1, 0.05, 0.01, 0.005, 0.001]},
+            'weight_decay': {'values': [5e-3, 5e-4]}
+        }
+    }
+
+sweep_id = wandb.sweep(sweep=sweep_configuration, project="Sweep training from scratch")
+
 
 def main():
     logger.info('args = %s', args)
-    name = f'{args.compress_rate}_{args.rank}'
-    wandb.init(name=name,
-               project=f'NORTON_ScratchConvRank1_{args.name}_{args.arch}',
-               config=vars(args))
+
+    run = wandb.init()
+
+    args.batch_size = wandb.config.batch_size
+    args.lr = wandb.config.lr
+    args.weight_decay = wandb.config.weight_decay
 
     # setup
     train_loader, val_loader = cifar10.load_data(
@@ -92,6 +106,7 @@ def main():
     model = finetune(model, train_loader, val_loader, args.epochs)
 
     # save model
+    name = f'{args.compress_rate}_{args.rank}_{args.batch_size}_{args.lr}_{args.weight_decay}'
     path = os.path.join(args.job_dir, f'{args.arch}_{name}.pt')
     torch.save({'state_dict': model.state_dict(),
                 'rank': args.rank},
@@ -178,6 +193,9 @@ def finetune(model, train_loader, val_loader, epochs):
     ), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=epochs)
+    # lr_decay_step = list(map(int, args.lr_decay_step.split(',')))
+    # scheduler = torch.optim.lr_scheduler.MultiStepLR(
+    #     optimizer, milestones=lr_decay_step, gamma=0.1)
 
     _, best_top1_acc, _ = validate(val_loader, model, criterion)
     best_model_state = copy.deepcopy(model.state_dict())
@@ -203,4 +221,4 @@ def finetune(model, train_loader, val_loader, epochs):
 
 
 if __name__ == '__main__':
-    main()
+    wandb.agent(sweep_id, function=main, count=100)

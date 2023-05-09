@@ -312,7 +312,7 @@ def main():
 
     # finetune
     logger.info('Finetuning model:')
-    model = finetune(model, train_loader, val_loader, args.epochs)
+    model = finetune(model, train_loader, val_loader, args.epochs, criterion)
 
     # save model
     path = os.path.join(args.job_dir, f'{args.arch}_{name}.pt')
@@ -322,9 +322,7 @@ def main():
                path)
 
 
-def finetune(model, train_loader, val_loader, epochs):
-    criterion = nn.CrossEntropyLoss()
-    # use a small learning rate
+def finetune(model, train_loader, val_loader, epochs, criterion):
     optimizer = torch.optim.SGD(model.parameters(
     ), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(

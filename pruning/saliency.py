@@ -4,29 +4,29 @@ import numpy as np
 from tqdm.auto import tqdm
 
 
-def get_saliency(head_weight, body_weight, tail_weight, criterion='vbd'):
+def get_saliency(head_factor, body_factor, tail_factor, criterion='csa'):
     """
-    Computes the saliency of each filter in the weight tensor based on a criterion.
+    Computes the saliency of each filter in the factor based on a criterion.
 
     Args:
-        head_weight (torch.Tensor): The weight tensor of a CPDHead layer, of shape (out_channels, in_channels, rank).
-        head_weight (torch.Tensor): The weight tensor of a CPDBody layer, of shape (out_channels, rank, kernel_size).
-        head_weight (torch.Tensor): The weight tensor of a CPDTail layer, of shape (out_channels, rank, kernel_size).
+        head_factor (torch.Tensor): The factor tensor of a CPDHead layer, of shape (in_channels, rank, out_channels).
+        body_factor (torch.Tensor): The factor tensor of a CPDBody layer, of shape (kernel_size, rank, out_channels).
+        tail_factor (torch.Tensor): The factor tensor of a CPDTail layer, of shape (kernel_size, rank, out_channels).
         criterion (srt): vbd or csa
 
     Returns:
         saliency (torch.Tensor): A 1D tensor containing the saliency of each filter.
     """
-    num_filters = head_weight.shape[0]
+    num_filters = head_factor.size(2)
     saliency = torch.full((num_filters, ), num_filters-1)
 
     if criterion == 'vbd':
         distance_matrix = torch.zeros(num_filters, num_filters)
         for i in tqdm(range(num_filters-1)):
             for j in range(i+1, num_filters):
-                head = VBD(head_weight[i], head_weight[j])
-                body = VBD(body_weight[i], body_weight[j])
-                tail = VBD(tail_weight[i], tail_weight[j])
+                head = VBD(head_factor[:, :, i], head_factor[:, :, j])
+                body = VBD(body_factor[:, :, i], body_factor[:, :, j])
+                tail = VBD(tail_factor[:, :, i], tail_factor[:, :, j])
                 distance_matrix[i, j] = head*body*tail
                 distance_matrix[j, i] = distance_matrix[i, j]
 
@@ -54,9 +54,9 @@ def get_saliency(head_weight, body_weight, tail_weight, criterion='vbd'):
         similarity_matrix = torch.zeros(num_filters, num_filters)
         for i in tqdm(range(num_filters-1)):
             for j in range(i+1, num_filters):
-                head = CSA(head_weight[i], head_weight[j])
-                body = CSA(body_weight[i], body_weight[j])
-                tail = CSA(tail_weight[i], tail_weight[j])
+                head = CSA(head_factor[:, :, i], head_factor[:, :, j])
+                body = CSA(body_factor[:, :, i], body_factor[:, :, j])
+                tail = CSA(tail_factor[:, :, i], tail_factor[:, :, j])
                 similarity_matrix[i, j] = head*body*tail
                 similarity_matrix[j, i] = similarity_matrix[i, j]
 

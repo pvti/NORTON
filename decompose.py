@@ -14,7 +14,7 @@ from data import cifar10
 from utils.train import train, validate
 from models.cifar10.vgg import vgg_16_bn
 from models.cifar10.resnet import resnet_56
-from decomposition.decomposition import decompose
+from decomposition.decomposition import conv_to_cpdblock
 
 
 def parse_args():
@@ -64,6 +64,34 @@ if not os.path.isdir(args.job_dir):
 utils.record_config(args)
 now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
 logger = utils.get_logger(os.path.join(args.job_dir, now+'.txt'))
+
+
+def decompose(model: nn.Module, rank: int, n_iter_max=300, n_iter_singular_error=3):
+    """
+    Decompose a Conv2d model to a CPDBlock model.
+
+    Args:
+        model (nn.Module): a Conv2d form model.
+        rank (int): rank.
+        n_iter_max (int): max number of iterations for parafac.
+        n_iter_singular_error (int): number of iterations for singular maxtrix error handler.
+
+    Returns:
+        model (nn.Module): a CPDBlock form model
+
+    """
+
+    for name, module in model._modules.items():
+        if isinstance(module, nn.Conv2d):
+            logger.info(f'decomposing: {name}')
+            model._modules[name] = conv_to_cpdblock(
+                module, rank, n_iter_max, n_iter_singular_error)
+        elif len(list(module.children())) > 0:
+            logger.info(f'recursing module: {name}')
+            # recurse
+            model._modules[name] = decompose(module, rank)
+
+    return model
 
 
 def main():
@@ -116,7 +144,8 @@ def finetune(model, train_loader, val_loader, epochs, criterion):
     best_model_state = copy.deepcopy(model.state_dict())
     epoch = 0
     while epoch < epochs:
-        train(epoch, train_loader, model, criterion, optimizer, scheduler, logger)
+        train(epoch, train_loader, model, criterion,
+              optimizer, scheduler, logger)
         _, valid_top1_acc, _ = validate(val_loader, model, criterion, logger)
 
         if valid_top1_acc > best_top1_acc:

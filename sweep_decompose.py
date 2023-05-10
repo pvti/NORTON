@@ -14,10 +14,11 @@ from utils.train import train, validate
 from data import cifar10
 from models.cifar10.vgg import vgg_16_bn
 from models.cifar10.resnet import resnet_56
+from decomposition.decomposition import decompose
 
 
 def parse_args():
-    parser = argparse.ArgumentParser('Cifar-10 sweep training from scratch')
+    parser = argparse.ArgumentParser('Cifar-10 sweep decomposing')
 
     parser.add_argument('--data_dir', type=str, default='../data',
                         help='path to dataset')
@@ -42,6 +43,10 @@ def parse_args():
                         help='use pre-specified rank for all layers')
     parser.add_argument('-cpr', '--compress_rate', type=str, default='[0.]*100',
                         help='list of compress rate of each layer')
+    parser.add_argument('--n_iter_max', type=int, default=100,
+                        help='max number of iterations for parafac')
+    parser.add_argument('--n_iter_singular_error', type=int, default=3,
+                        help='number of iterations for singular maxtrix error handler')
     parser.add_argument('--name', type=str, default='',
                         help='wandb project name')
 
@@ -61,20 +66,21 @@ now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
 logger = utils.get_logger(os.path.join(args.job_dir, now+'.txt'))
 
 sweep_configuration = {
-        'method': 'grid',
-        'name': 'sweep',
-        'metric': {
+    'method': 'grid',
+    'name': 'sweep',
+    'metric': {
             'goal': 'maximize',
             'name': 'top1'
-        },
-        'parameters': {
-            'batch_size': {'values': [128, 256, 512]},
-            'lr': {'values': [0.1, 0.05, 0.01, 0.005, 0.001]},
-            'weight_decay': {'values': [5e-3, 5e-4]}
-        }
+    },
+    'parameters': {
+        'batch_size': {'values': [128, 256, 512]},
+        'lr': {'values': [0.1, 0.05, 0.01, 0.005, 0.001]},
+        'weight_decay': {'values': [5e-3, 5e-4]}
     }
+}
 
-sweep_id = wandb.sweep(sweep=sweep_configuration, project="Sweep training from scratch")
+sweep_id = wandb.sweep(sweep=sweep_configuration,
+                       project=f"Sweep decomposing r = {args.rank}")
 
 
 def main():
@@ -97,12 +103,21 @@ def main():
     # load model
     logger.info('Loading baseline or pruned model')
     compress_rate = utils.get_cpr(args.compress_rate)
-    model = eval(args.arch)(compress_rate=compress_rate, rank=args.rank).cuda()
-    logger.info(model)
+    model = eval(args.arch)(compress_rate=compress_rate).cuda()
+    ckpt = torch.load(args.ckpt, map_location='cuda:0')
+    model.load_state_dict(ckpt['state_dict'])
+
+    # decompose
+    logger.info('Decomposing model:')
+    model = decompose(model, args.rank,
+                      args.n_iter_max, args.n_iter_singular_error)
+    _, dcp_acc, _ = validate(val_loader, model, criterion, logger)
+    wandb.log({'decomposed_acc': dcp_acc})
 
     # finetune
     logger.info('Finetuning model:')
-    model, best_top1_acc = finetune(model, train_loader, val_loader, args.epochs, criterion)
+    model, best_top1_acc = finetune(
+        model, train_loader, val_loader, args.epochs, criterion)
 
     # save model
     name = f'{args.compress_rate}_{args.rank}_{args.batch_size}_{args.lr}_{args.weight_decay}'
@@ -118,15 +133,13 @@ def finetune(model, train_loader, val_loader, epochs, criterion):
     ), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=epochs)
-    # lr_decay_step = list(map(int, args.lr_decay_step.split(',')))
-    # scheduler = torch.optim.lr_scheduler.MultiStepLR(
-    #     optimizer, milestones=lr_decay_step, gamma=0.1)
 
     _, best_top1_acc, _ = validate(val_loader, model, criterion, logger)
     best_model_state = copy.deepcopy(model.state_dict())
     epoch = 0
     while epoch < epochs:
-        train(epoch, train_loader, model, criterion, optimizer, scheduler, logger)
+        train(epoch, train_loader, model, criterion,
+              optimizer, scheduler, logger)
         _, valid_top1_acc, _ = validate(val_loader, model, criterion, logger)
 
         if valid_top1_acc > best_top1_acc:

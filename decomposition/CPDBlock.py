@@ -42,11 +42,11 @@ class CPDBlock(nn.Module):
         channels = rank*out_channels
 
         self.feature = nn.Sequential(OrderedDict([
-            ('pointwise', nn.Conv2d(in_channels, channels, 1, padding=0, bias=False)),
+            ('pointwise', nn.Conv2d(in_channels, channels, 1, stride=1, padding=0, bias=False)),
             ('vertical', nn.Conv2d(channels, channels, kernel_size=(kernel_size, 1),
-                                   stride=stride, padding=(padding, 0), groups=channels, bias=False)),
+                                   stride=(stride, 1), padding=(padding, 0), groups=channels, bias=False)),
             ('horizontal', nn.Conv2d(channels, channels, kernel_size=(1, kernel_size),
-                                     stride=stride, padding=(0, padding), groups=channels, bias=False))
+                                     stride=(1, stride), padding=(0, padding), groups=channels, bias=False))
         ]))
 
         if bias:

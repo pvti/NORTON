@@ -109,7 +109,7 @@ def conv_to_cpdblock(conv2d: nn.Conv2d, rank: int, n_iter_max=300, n_iter_singul
     device = weights.get_device()
 
     head_factor, body_factor, tail_factor = conv_weights_to_factors(
-        weights, n_iter_max, n_iter_singular_error)
+        weights, rank, n_iter_max, n_iter_singular_error)
 
     biased = (conv2d.bias != None)
     # instantiate CPDBlock

@@ -18,7 +18,7 @@ def get_saliency(head_factor, body_factor, tail_factor, criterion='csa'):
         saliency (torch.Tensor): A 1D tensor containing the saliency of each filter.
     """
     num_filters = head_factor.size(2)
-    saliency = torch.full((num_filters, ), num_filters-1)
+    saliency = np.full((num_filters, ), num_filters-1)
 
     if criterion == 'vbd':
         distance_matrix = torch.zeros(num_filters, num_filters)

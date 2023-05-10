@@ -52,7 +52,8 @@ def get_saliency(head_factor, body_factor, tail_factor, criterion='csa'):
 
     elif criterion == 'csa':
         similarity_matrix = torch.zeros(num_filters, num_filters)
-        for i in tqdm(range(num_filters-1)):
+        # for i in tqdm(range(num_filters-1)):
+        for i in tqdm(range(num_filters)): # so that tqdm shows num_filters
             for j in range(i+1, num_filters):
                 head = CSA(head_factor[:, :, i], head_factor[:, :, j])
                 body = CSA(body_factor[:, :, i], body_factor[:, :, j])

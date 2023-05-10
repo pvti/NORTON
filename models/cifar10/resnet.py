@@ -45,7 +45,7 @@ def conv3x3(in_planes, out_planes, rank=0, stride=1):
                           kernel_size=3, stride=stride, padding=1, bias=False)
     else:
         layer = CPDBlock(in_planes, out_planes, rank=rank,
-                         kernel_size=3, stride=stride, padding=1, biased=False)
+                         kernel_size=3, stride=stride, padding=1, bias=False)
 
     return layer
 
@@ -112,17 +112,20 @@ class ResNet(nn.Module):
             compress_rate, num_layers)
 
         self.layer_num = 0
-        self.conv1 = nn.Conv2d(3, self.overall_channel[self.layer_num], kernel_size=3, stride=1, padding=1,
-                               bias=False)
+        self.conv1 = nn.Conv2d(3, self.overall_channel[self.layer_num], kernel_size=3, stride=1, padding=1, bias=False) if rank == 0 else CPDBlock(
+            3, self.overall_channel[self.layer_num], rank, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(self.overall_channel[self.layer_num])
         self.relu = nn.ReLU(inplace=True)
         self.layers = nn.ModuleList()
         self.layer_num += 1
 
         #self.layers = nn.ModuleList()
-        self.layer1 = self._make_layer(block, blocks_num=n, rank=rank, stride=1)
-        self.layer2 = self._make_layer(block, blocks_num=n, rank=rank, stride=2)
-        self.layer3 = self._make_layer(block, blocks_num=n, rank=rank, stride=2)
+        self.layer1 = self._make_layer(
+            block, blocks_num=n, rank=rank, stride=1)
+        self.layer2 = self._make_layer(
+            block, blocks_num=n, rank=rank, stride=2)
+        self.layer3 = self._make_layer(
+            block, blocks_num=n, rank=rank, stride=2)
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 

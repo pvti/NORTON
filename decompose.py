@@ -14,6 +14,7 @@ from data import cifar10
 from utils.train import train, validate
 from models.cifar10.vgg import vgg_16_bn
 from models.cifar10.resnet import resnet_56
+from models.cifar10.densenet import densenet_40
 from decomposition.decomposition import conv_to_cpdblock
 
 
@@ -23,7 +24,7 @@ def parse_args():
     parser.add_argument('--data_dir', type=str, default='../data',
                         help='path to dataset')
     parser.add_argument('--arch', type=str, default='vgg_16_bn',
-                        choices=('vgg_16_bn', 'resnet_56'), help='architecture')
+                        choices=('vgg_16_bn', 'resnet_56', 'densenet_40'), help='architecture')
     parser.add_argument('--ckpt', type=str, default='checkpoint/cifar10/vgg_16_bn.pt',
                         help='checkpoint path')
     parser.add_argument('--job_dir', type=str, default='result',
@@ -83,9 +84,14 @@ def decompose(model: nn.Module, rank: int, n_iter_max=300, n_iter_singular_error
 
     for name, module in model._modules.items():
         if isinstance(module, nn.Conv2d):
-            logger.info(f'decomposing: {name}')
-            model._modules[name] = conv_to_cpdblock(
-                module, rank, n_iter_max, n_iter_singular_error)
+            if (module.kernel_size[0] > 1):
+                logger.info(f'decomposing: {name}')
+                model._modules[name] = conv_to_cpdblock(
+                    module, rank, n_iter_max, n_iter_singular_error)
+            else:
+                logger.info(
+                    f'module {name} has kernel_size = {module.kernel_size}, passing')
+
         elif len(list(module.children())) > 0:
             logger.info(f'recursing module: {name}')
             # recurse
@@ -120,6 +126,7 @@ def main():
     logger.info('Decomposing model:')
     model = decompose(model, args.rank,
                       args.n_iter_max, args.n_iter_singular_error)
+    logger.info(model)
     _, dcp_acc, _ = validate(val_loader, model, criterion, logger)
     wandb.log({'decomposed_acc': dcp_acc})
 

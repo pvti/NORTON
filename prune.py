@@ -173,99 +173,100 @@ def prune_resnet(model, ori_state_dict, num_layers=56):
     current_cfg = cfg[num_layers]
     last_select_index = None
 
-    all_conv_weight = []
+    # list to save processed layer which has compress_rate > 0 or in_channels being affected
+    processed_conv = []
 
-    cnt = 1
     for layer, num in enumerate(current_cfg):
         layer_name = 'layer' + str(layer + 1) + '.'
         for k in range(num):
             for l in range(2):
-                cnt += 1
-                cov_id = cnt
-
                 conv_name = layer_name + str(k) + '.conv' + str(l + 1)
-                conv_weight_name = conv_name + '.weight'
-                conv_head_weight_name = conv_name + '.head.weight'
-                conv_body_weight_name = conv_name + '.body.weight'
-                conv_tail_weight_name = conv_name + '.tail.weight'
-                all_conv_weight.append(conv_weight_name)
-                ori_head_weight = ori_state_dict[conv_head_weight_name]
-                ori_body_weight = ori_state_dict[conv_body_weight_name]
-                ori_tail_weight = ori_state_dict[conv_tail_weight_name]
-                cur_head_weight = state_dict[conv_head_weight_name]
-                # CPDHead has weight tensor of shape (in_channels, out_channels, rank)
-                orifilter_num = ori_head_weight.size(1)
-                currentfilter_num = cur_head_weight.size(1)
+                pointwise_weight_name = conv_name + '.feature.pointwise.weight'
+                vertical_weight_name = conv_name + '.feature.vertical.weight'
+                horizontal_weight_name = conv_name + '.feature.horizontal.weight'
+                processed_conv.append(conv_name)
+                ori_pointwise_weight = ori_state_dict[pointwise_weight_name]
+                ori_vertical_weight = ori_state_dict[vertical_weight_name]
+                ori_horizontal_weight = ori_state_dict[horizontal_weight_name]
+                cur_pointwise_weight = state_dict[pointwise_weight_name]
 
-                if orifilter_num != currentfilter_num:
-                    logger.info(f'computing saliency for cov_id = {cov_id}')
-                    tmp_head_weight = ori_head_weight.detach().clone()
-                    tmp_head_weight = tmp_head_weight.transpose(1, 0)
-                    saliency = get_saliency(
-                        tmp_head_weight, ori_body_weight, ori_tail_weight, args.criterion)
-                    select_index = np.argsort(
-                        saliency)[orifilter_num - currentfilter_num:]
-                    select_index.sort()
+                # Pointwise module has weight tensor of shape (rank*out_channels, in_channels)
+                ori_num_filter = ori_pointwise_weight.size(0)
+                cur_num_filter = cur_pointwise_weight.size(0)
 
+                # out_channels changes
+                if ori_num_filter != cur_num_filter:
+                    logger.info(f'computing saliency for {conv_name}')
+                    ori_head_factor, ori_body_factor, ori_tail_factor = cpdblock_weights_to_factors(
+                        ori_pointwise_weight, ori_vertical_weight, ori_horizontal_weight, args.rank)
+
+                    # update original head factor if in_channels changed.
+                    updated_head_factor = ori_head_factor
                     if last_select_index is not None:
-                        # current layer, out channel
-                        for index_i, i in enumerate(select_index):
-                            # CPDBody and CPDTail has weight tensor of shape (out_channels, rank, kernel_size). They don't have in_channels!
-                            state_dict[name_base +
-                                       conv_body_weight_name][index_i] = ori_state_dict[conv_body_weight_name][i]
-                            state_dict[name_base +
-                                       conv_tail_weight_name][index_i] = ori_state_dict[conv_tail_weight_name][i]
-                            # last layer, in channel
-                            for index_j, j in enumerate(last_select_index):
-                                # CPDHead has weight tensor of shape (in_channels, out_channels, rank)
-                                state_dict[name_base+conv_head_weight_name][index_j][index_i] = ori_state_dict[conv_head_weight_name][j][i]
-                    else:
-                        for index_i, i in enumerate(select_index):
-                            # CPDHead has weight tensor of shape (in_channels, out_channels, rank)
-                            state_dict[name_base+conv_head_weight_name][:,
-                                                                        index_i] = ori_state_dict[conv_head_weight_name][:, i]
-                            # CPDBody and CPDTail has weight tensor of shape (out_channels, rank, kernel_size)
-                            state_dict[name_base +
-                                       conv_body_weight_name][index_i] = ori_state_dict[conv_body_weight_name][i]
-                            state_dict[name_base +
-                                       conv_tail_weight_name][index_i] = ori_state_dict[conv_tail_weight_name][i]
+                        updated_head_factor = torch.empty(
+                            (len(last_select_index), ori_head_factor.size(1), ori_head_factor.size(2)))
+                        for index_i, i in enumerate(last_select_index):
+                            updated_head_factor[index_i] = ori_head_factor[i]
+
+                    num_filter_keep = int(cur_num_filter / args.rank)
+                    head_factor, body_factor, tail_factor, select_index = prune_factors(
+                        updated_head_factor, ori_body_factor, ori_tail_factor, num_filter_keep, args.criterion)
+                    pointwise_weight, vertical_weight, horizontal_weight = factors_to_cpdblock_weights(
+                        head_factor, body_factor, tail_factor)
+                    state_dict[name_base +
+                               pointwise_weight_name] = pointwise_weight
+                    state_dict[name_base +
+                               vertical_weight_name] = vertical_weight
+                    state_dict[name_base +
+                               horizontal_weight_name] = horizontal_weight
 
                     last_select_index = select_index
 
-                # second conv layers of layer3
+                # out_channels is identical but in_channels changed
                 elif last_select_index is not None:
-                    print(conv_head_weight_name)
+                    logger.info(f'treat {conv_name} which is not pruned')
                     state_dict[name_base +
-                               conv_body_weight_name] = ori_state_dict[conv_body_weight_name]
+                               vertical_weight_name] = ori_state_dict[vertical_weight_name]
                     state_dict[name_base +
-                               conv_tail_weight_name] = ori_state_dict[conv_tail_weight_name]
-                    for i in range(orifilter_num):
+                               horizontal_weight_name] = ori_state_dict[horizontal_weight_name]
+                    for i in range(ori_num_filter):
                         for index_j, j in enumerate(last_select_index):
                             state_dict[name_base +
-                                       conv_head_weight_name][index_j][i] = ori_state_dict[conv_head_weight_name][j][i]
+                                       pointwise_weight_name][i][index_j] = ori_state_dict[pointwise_weight_name][i][j]
                     last_select_index = None
 
+                # none changes
                 else:
+                    logger.info(f'treat {conv_name} which is untouched')
                     state_dict[name_base +
-                               conv_head_weight_name] = ori_state_dict[conv_head_weight_name]
+                               pointwise_weight_name] = ori_state_dict[pointwise_weight_name]
                     state_dict[name_base +
-                               conv_body_weight_name] = ori_state_dict[conv_body_weight_name]
+                               vertical_weight_name] = ori_state_dict[vertical_weight_name]
                     state_dict[name_base +
-                               conv_tail_weight_name] = ori_state_dict[conv_tail_weight_name]
+                               horizontal_weight_name] = ori_state_dict[horizontal_weight_name]
                     last_select_index = None
 
-    # fetch all remaining layers (Conv2d/CPDLayer/Linear) that is nof affect from pruning, e.g. ratio = 0. Ignore BN layers
+    # treat remaining layers which are totally untouched/unprocessed
     for name, module in model.named_modules():
         name = name.replace('module.', '')
 
-        if isinstance(module, nn.Conv2d):
-            conv_name = name + '.weight'
+        if isinstance(module, CPDBlock):
             if 'shortcut' in name:
                 continue
-            if conv_name not in all_conv_weight:
-                state_dict[name_base+conv_name] = ori_state_dict[conv_name]
+            if name not in processed_conv:
+                logger.info(f'treat {name} which is untouched')
+                pointwise_weight_name = name + '.feature.pointwise.weight'
+                vertical_weight_name = name + '.feature.vertical.weight'
+                horizontal_weight_name = name + '.feature.horizontal.weight'
+                state_dict[name_base +
+                           pointwise_weight_name] = ori_state_dict[pointwise_weight_name]
+                state_dict[name_base +
+                           vertical_weight_name] = ori_state_dict[vertical_weight_name]
+                state_dict[name_base +
+                           horizontal_weight_name] = ori_state_dict[horizontal_weight_name]
 
         elif isinstance(module, nn.Linear):
+            logger.info(f'treat {name} which is not pruned')
             state_dict[name_base+name +
                        '.weight'] = ori_state_dict[name + '.weight']
             state_dict[name_base+name +
@@ -332,7 +333,8 @@ def finetune(model, train_loader, val_loader, epochs, criterion):
     best_model_state = copy.deepcopy(model.state_dict())
     epoch = 0
     while epoch < epochs:
-        train(epoch, train_loader, model, criterion, optimizer, scheduler, logger)
+        train(epoch, train_loader, model, criterion,
+              optimizer, scheduler, logger)
         _, valid_top1_acc, _ = validate(val_loader, model, criterion, logger)
 
         if valid_top1_acc > best_top1_acc:

@@ -1,8 +1,7 @@
 import argparse
 import torch
-from models.cifar10.vgg import vgg_16_bn
-from models.cifar10.resnet import resnet_56
-import utils.common as utils
+from models.cifar10 import *
+from utils.common import get_cpr
 from ptflops import get_model_complexity_info
 
 
@@ -10,7 +9,7 @@ def parse_args():
     parser = argparse.ArgumentParser('Compute model complexity')
 
     parser.add_argument('--arch', type=str, default='vgg_16_bn',
-                        choices=('vgg_16_bn', 'resnet_56'), help='architecture')
+                        choices=('vgg_16_bn', 'resnet_56', 'densenet_40'), help='architecture')
     parser.add_argument('-r', '--rank', dest='rank', type=int, default=6,
                         help='use pre-specified rank for all layers')
     parser.add_argument('-cpr', '--compress_rate', type=str, default='[0.]*100',
@@ -23,7 +22,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     with torch.cuda.device(0):
-        compress_rate = utils.get_cpr(args.compress_rate)
+        compress_rate = get_cpr(args.compress_rate)
         model = eval(args.arch)(compress_rate, args.rank)
 
         macs, params = get_model_complexity_info(model,

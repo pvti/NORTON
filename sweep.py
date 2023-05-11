@@ -30,7 +30,7 @@ def parse_args():
                         help='batch size')
     parser.add_argument('--epochs', type=int, default=400,
                         help='num of fine-tuning epochs')
-    parser.add_argument('--lr', type=float, default=0.1,
+    parser.add_argument('--lr', type=float, default=0.05,
                         help='init learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
     parser.add_argument('--weight_decay', type=float, default=5e-4,

@@ -155,8 +155,18 @@ def prune_vgg(model, ori_state_dict):
         name = name.replace('module.', '')
         if isinstance(module, nn.Linear):
             logger.info(f'treat {name} which is not pruned')
-            state_dict[name_base+name +
-                       '.weight'] = ori_state_dict[name + '.weight']
+
+            # linear1
+            if last_select_index is not None:
+                for index_i, i in enumerate(last_select_index):
+                    state_dict[name_base+name + '.weight'][:,
+                                                           index_i] = ori_state_dict[name + '.weight'][:, i]
+                last_select_index = None
+
+            # linear2
+            else:
+                state_dict[name_base+name +
+                           '.weight'] = ori_state_dict[name + '.weight']
             state_dict[name_base+name +
                        '.bias'] = ori_state_dict[name + '.bias']
 

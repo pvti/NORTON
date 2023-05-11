@@ -105,7 +105,7 @@ def main():
 
     # save model
     name = f'{args.compress_rate}_{args.rank}_{args.batch_size}_{args.lr}_{args.weight_decay}'
-    path = os.path.join(args.job_dir, f'{args.arch}_{name}_{best_top1_acc}.pt')
+    path = os.path.join(args.job_dir, f'{args.arch}_{name}_{best_top1_acc:.2f}.pt')
     torch.save({'state_dict': model.state_dict(),
                 'rank': args.rank},
                path)

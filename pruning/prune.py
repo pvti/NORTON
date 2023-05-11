@@ -9,6 +9,7 @@ def prune_factors(head_factor, body_factor, tail_factor, num_filter_keep, criter
     ori_num_filter = head_factor.size(2)
     select_index = np.argsort(saliency)[ori_num_filter-num_filter_keep:]
     select_index.sort()
+    select_index = select_index.tolist()
 
     in_channels = head_factor.size(0)
     rank = head_factor.size(1)

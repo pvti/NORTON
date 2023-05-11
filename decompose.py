@@ -12,9 +12,7 @@ import torch.utils.data
 import utils.common as utils
 from data import cifar10
 from utils.train import train, validate
-from models.cifar10.vgg import vgg_16_bn
-from models.cifar10.resnet import resnet_56
-from models.cifar10.densenet import densenet_40
+from models.cifar10 import *
 from decomposition.decomposition import conv_to_cpdblock
 
 

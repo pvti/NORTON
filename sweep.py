@@ -12,8 +12,7 @@ import torch.utils.data
 import utils.common as utils
 from utils.train import train, validate
 from data import cifar10
-from models.cifar10.vgg import vgg_16_bn
-from models.cifar10.resnet import resnet_56
+from models.cifar10 import *
 
 
 def parse_args():

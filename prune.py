@@ -3,7 +3,6 @@ import datetime
 import argparse
 import copy
 import wandb
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
@@ -15,6 +14,7 @@ from utils.train import train, validate
 from data import cifar10
 from models.cifar10.vgg import vgg_16_bn
 from models.cifar10.resnet import resnet_56
+from models.cifar10.densenet import densenet_40
 from decomposition.CPDBlock import CPDBlock
 from pruning.prune import prune_factors
 from decomposition.decomposition import cpdblock_weights_to_factors, factors_to_cpdblock_weights
@@ -26,7 +26,8 @@ def parse_args():
     parser.add_argument('--data_dir', type=str, default='../data',
                         help='path to dataset')
     parser.add_argument('--arch', type=str, default='vgg_16_bn',
-                        choices=('vgg_16_bn', 'resnet_56'), help='architecture')
+                        choices=('vgg_16_bn', 'resnet_56', 'densenet_40'),
+                        help='architecture')
     parser.add_argument('--ckpt', type=str,
                         default='result/vgg_16_bn/6/[0.]*100/vgg_16_bn_[0.]*100_6.pt',
                         help='checkpoint path')
@@ -93,8 +94,12 @@ def prune_vgg(model, ori_state_dict):
             ori_num_filter = ori_pointwise_weight.size(0)
             cur_num_filter = cur_pointwise_weight.size(0)
 
+            # number of filters in conv2d form, be careful
+            ori_out_channels = int(ori_num_filter / args.rank)
+            cur_out_channels = int(cur_num_filter / args.rank)
+
             # out_channels changes
-            if ori_num_filter != cur_num_filter:
+            if ori_out_channels != cur_out_channels:
                 logger.info(f'computing saliency for {name} ')
                 ori_head_factor, ori_body_factor, ori_tail_factor = cpdblock_weights_to_factors(
                     ori_pointwise_weight, ori_vertical_weight, ori_horizontal_weight, args.rank)
@@ -102,14 +107,14 @@ def prune_vgg(model, ori_state_dict):
                 # update original head factor if in_channels changed.
                 updated_head_factor = ori_head_factor
                 if last_select_index is not None:
+                    cur_pointwise_in_channels = cur_pointwise_weight.size(1)
                     updated_head_factor = torch.empty(
-                        (len(last_select_index), ori_head_factor.size(1), ori_head_factor.size(2)))
+                        (cur_pointwise_in_channels, ori_head_factor.size(1), ori_head_factor.size(2)))
                     for index_i, i in enumerate(last_select_index):
                         updated_head_factor[index_i] = ori_head_factor[i]
 
-                num_filter_keep = int(cur_num_filter / args.rank)
                 head_factor, body_factor, tail_factor, select_index = prune_factors(
-                    updated_head_factor, ori_body_factor, ori_tail_factor, num_filter_keep, args.criterion)
+                    updated_head_factor, ori_body_factor, ori_tail_factor, cur_out_channels, args.criterion)
                 pointwise_weight, vertical_weight, horizontal_weight = factors_to_cpdblock_weights(
                     head_factor, body_factor, tail_factor)
                 state_dict[name_base +
@@ -194,8 +199,12 @@ def prune_resnet(model, ori_state_dict, num_layers=56):
                 ori_num_filter = ori_pointwise_weight.size(0)
                 cur_num_filter = cur_pointwise_weight.size(0)
 
+                # number of filters in conv2d form, be careful
+                ori_out_channels = int(ori_num_filter / args.rank)
+                cur_out_channels = int(cur_num_filter / args.rank)
+
                 # out_channels changes
-                if ori_num_filter != cur_num_filter:
+                if ori_out_channels != cur_out_channels:
                     logger.info(f'computing saliency for {conv_name}')
                     ori_head_factor, ori_body_factor, ori_tail_factor = cpdblock_weights_to_factors(
                         ori_pointwise_weight, ori_vertical_weight, ori_horizontal_weight, args.rank)
@@ -203,14 +212,15 @@ def prune_resnet(model, ori_state_dict, num_layers=56):
                     # update original head factor if in_channels changed.
                     updated_head_factor = ori_head_factor
                     if last_select_index is not None:
+                        cur_pointwise_in_channels = cur_pointwise_weight.size(
+                            1)
                         updated_head_factor = torch.empty(
-                            (len(last_select_index), ori_head_factor.size(1), ori_head_factor.size(2)))
+                            (cur_pointwise_in_channels, ori_head_factor.size(1), ori_head_factor.size(2)))
                         for index_i, i in enumerate(last_select_index):
                             updated_head_factor[index_i] = ori_head_factor[i]
 
-                    num_filter_keep = int(cur_num_filter / args.rank)
                     head_factor, body_factor, tail_factor, select_index = prune_factors(
-                        updated_head_factor, ori_body_factor, ori_tail_factor, num_filter_keep, args.criterion)
+                        updated_head_factor, ori_body_factor, ori_tail_factor, cur_out_channels, args.criterion)
                     pointwise_weight, vertical_weight, horizontal_weight = factors_to_cpdblock_weights(
                         head_factor, body_factor, tail_factor)
                     state_dict[name_base +
@@ -277,6 +287,109 @@ def prune_resnet(model, ori_state_dict, num_layers=56):
     return model
 
 
+def prune_densenet(model, ori_state_dict):
+    state_dict = model.state_dict()
+    last_select_index = []
+
+    cov_id = 0
+    for name, module in model.named_modules():
+        name = name.replace('module.', '')
+
+        if isinstance(module, CPDBlock):
+            cov_id += 1
+            pointwise_weight_name = name + '.feature.pointwise.weight'
+            vertical_weight_name = name + '.feature.vertical.weight'
+            horizontal_weight_name = name + '.feature.horizontal.weight'
+            ori_pointwise_weight = ori_state_dict[pointwise_weight_name]
+            ori_vertical_weight = ori_state_dict[vertical_weight_name]
+            ori_horizontal_weight = ori_state_dict[horizontal_weight_name]
+            cur_pointwise_weight = state_dict[pointwise_weight_name]
+
+            # Pointwise module has weight tensor of shape (rank*out_channels, in_channels)
+            ori_num_filter = ori_pointwise_weight.size(0)
+            cur_num_filter = cur_pointwise_weight.size(0)
+
+            # number of filters in conv2d form, be careful
+            ori_out_channels = int(ori_num_filter / args.rank)
+            cur_out_channels = int(cur_num_filter / args.rank)
+
+            # out_channels changes
+            if ori_out_channels != cur_out_channels:
+                logger.info(f'computing saliency for {name}')
+                ori_head_factor, ori_body_factor, ori_tail_factor = cpdblock_weights_to_factors(
+                    ori_pointwise_weight, ori_vertical_weight, ori_horizontal_weight, args.rank)
+
+                # update original head factor if in_channels changed.
+                updated_head_factor = ori_head_factor
+                if last_select_index is not None:
+                    cur_pointwise_in_channels = cur_pointwise_weight.size(1)
+                    updated_head_factor = torch.empty(
+                        (cur_pointwise_in_channels, ori_head_factor.size(1), ori_head_factor.size(2)))
+                    for index_i, i in enumerate(last_select_index):
+                        updated_head_factor[index_i] = ori_head_factor[i]
+
+                head_factor, body_factor, tail_factor, select_index = prune_factors(
+                    updated_head_factor, ori_body_factor, ori_tail_factor, cur_out_channels, args.criterion)
+                pointwise_weight, vertical_weight, horizontal_weight = factors_to_cpdblock_weights(
+                    head_factor, body_factor, tail_factor)
+                state_dict[name_base +
+                           pointwise_weight_name] = pointwise_weight
+                state_dict[name_base + vertical_weight_name] = vertical_weight
+                state_dict[name_base +
+                           horizontal_weight_name] = horizontal_weight
+
+            # out_channels is identical but in_channels changed
+            elif last_select_index is not None:
+                logger.info(f'treat {name} which is not pruned')
+                state_dict[name_base +
+                           vertical_weight_name] = ori_state_dict[vertical_weight_name]
+                state_dict[name_base +
+                           horizontal_weight_name] = ori_state_dict[horizontal_weight_name]
+                for i in range(ori_num_filter):
+                    for index_j, j in enumerate(last_select_index):
+                        state_dict[name_base +
+                                   pointwise_weight_name][i][index_j] = ori_state_dict[pointwise_weight_name][i][j]
+
+                # first conv layer
+                if last_select_index == []:
+                    state_dict[name_base +
+                               pointwise_weight_name] = ori_state_dict[pointwise_weight_name]
+
+                select_index = list(range(0, ori_out_channels))
+
+            # none changes
+            else:
+                select_index = list(range(0, ori_out_channels))
+                state_dict[name_base +
+                           pointwise_weight_name] = ori_state_dict[pointwise_weight_name]
+                state_dict[name_base +
+                           vertical_weight_name] = ori_state_dict[vertical_weight_name]
+                state_dict[name_base +
+                           horizontal_weight_name] = ori_state_dict[horizontal_weight_name]
+
+            # transition layer
+            if cov_id == 1 or cov_id == 14 or cov_id == 27:
+                last_select_index = select_index
+
+            else:
+                tmp_select_index = [x+cov_id*12 -
+                                    (cov_id-1)//13*12 for x in select_index]
+                last_select_index.extend(tmp_select_index)
+
+    # treat remaining layers (Linear)
+    for name, module in model.named_modules():
+        name = name.replace('module.', '')
+        if isinstance(module, nn.Linear):
+            logger.info(f'treat {name} which is not pruned')
+            for index_i, i in enumerate(last_select_index):
+                state_dict[name_base+name + '.weight'][:,
+                                                       index_i] = ori_state_dict[name + '.weight'][:, i]
+            state_dict[name_base+name +
+                       '.bias'] = ori_state_dict[name + '.bias']
+
+    model.load_state_dict(state_dict)
+
+
 def main():
     logger.info('args = %s', args)
     # init wandb
@@ -310,6 +423,8 @@ def main():
         prune_vgg(model, ori_state_dict)
     elif args.arch == 'resnet_56':
         prune_resnet(model, ori_state_dict, 56)
+    elif args.arch == 'densenet_40':
+        prune_densenet(model, ori_state_dict)
 
     # finetune
     logger.info('Finetuning model:')

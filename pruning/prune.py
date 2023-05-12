@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 from .saliency import get_saliency
 
@@ -7,8 +6,8 @@ def prune_factors(head_factor, body_factor, tail_factor, num_filter_keep, criter
 
     saliency = get_saliency(head_factor, body_factor, tail_factor, criterion)
     ori_num_filter = head_factor.size(2)
-    select_index = np.argsort(saliency)[ori_num_filter-num_filter_keep:]
-    select_index.sort()
+    select_index = torch.argsort(saliency)[ori_num_filter-num_filter_keep:]
+    select_index, _ = select_index.sort()
     select_index = select_index.tolist()
 
     in_channels = head_factor.size(0)

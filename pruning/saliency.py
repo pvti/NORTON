@@ -1,6 +1,4 @@
 import torch
-from scipy.linalg import subspace_angles
-import numpy as np
 from tqdm.auto import tqdm
 
 
@@ -18,16 +16,16 @@ def get_saliency(head_factor, body_factor, tail_factor, criterion='csa'):
         saliency (torch.Tensor): A 1D tensor containing the saliency of each filter.
     """
     num_filters = head_factor.size(2)
-    saliency = np.full((num_filters, ), num_filters-1)
+    saliency = torch.full((num_filters, ), num_filters-1)
 
     if criterion == 'vbd':
         distance_matrix = torch.zeros(num_filters, num_filters)
         for i in tqdm(range(num_filters-1)):
             for j in range(i+1, num_filters):
                 head = VBD(head_factor[:, :, i], head_factor[:, :, j])
-                body = VBD(body_factor[:, :, i], body_factor[:, :, j])
-                tail = VBD(tail_factor[:, :, i], tail_factor[:, :, j])
-                distance_matrix[i, j] = head*body*tail
+                # body = VBD(body_factor[:, :, i], body_factor[:, :, j])
+                # tail = VBD(tail_factor[:, :, i], tail_factor[:, :, j])
+                distance_matrix[i, j] = head#*body*tail
                 distance_matrix[j, i] = distance_matrix[i, j]
 
         inf = float('inf')
@@ -56,9 +54,9 @@ def get_saliency(head_factor, body_factor, tail_factor, criterion='csa'):
         for i in tqdm(range(num_filters)): # so that tqdm shows num_filters
             for j in range(i+1, num_filters):
                 head = CSA(head_factor[:, :, i], head_factor[:, :, j])
-                body = CSA(body_factor[:, :, i], body_factor[:, :, j])
-                tail = CSA(tail_factor[:, :, i], tail_factor[:, :, j])
-                similarity_matrix[i, j] = head*body*tail
+                # body = CSA(body_factor[:, :, i], body_factor[:, :, j])
+                # tail = CSA(tail_factor[:, :, i], tail_factor[:, :, j])
+                similarity_matrix[i, j] = head#*body*tail
                 similarity_matrix[j, i] = similarity_matrix[i, j]
 
         inf = -float('inf')
@@ -96,9 +94,17 @@ def VBD(x, y):
 def CSA(x, y):
     """
     """
-    np_x = x.detach().cpu().numpy()
-    np_y = y.detach().cpu().numpy()
-    principal_angles = subspace_angles(np_x, np_y)
-    csa = np.cos(principal_angles[-1])**2
+    csa = torch.cos(subspace_angles(x, y))**2
 
     return csa
+
+
+def subspace_angles(A, B):
+    A, _ = torch.linalg.qr(A)
+    B, _ = torch.linalg.qr(B)
+    if A.size(1) < B.size(1):
+        A, B = B, A
+    B = B - torch.matmul(A, torch.matmul(A.transpose(1, 0), B))
+    theta = torch.asin(torch.min(torch.tensor(1.0), torch.norm(B)))
+
+    return theta

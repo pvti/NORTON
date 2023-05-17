@@ -1,8 +1,12 @@
 import torch
 from tqdm.auto import tqdm
+import math
 
 
-def get_saliency(head_factor, body_factor, tail_factor, criterion='csa'):
+pi = torch.tensor(math.pi, device=0)
+
+
+def get_saliency(head_factor, body_factor, tail_factor, criterion='pabs'):
     """
     Computes the saliency of each filter in the factor based on a criterion.
 
@@ -80,6 +84,36 @@ def get_saliency(head_factor, body_factor, tail_factor, criterion='csa'):
             saliency[i] = index
             similarity_matrix[index, :] = similarity_matrix[:, index] = inf
 
+    elif criterion == 'pabs':
+        distance_matrix = torch.zeros(num_filters, num_filters)
+        for i in tqdm(range(num_filters-1)):
+            for j in range(i+1, num_filters):
+                head = subspace_angles(head_factor[:, :, i], head_factor[:, :, j])
+                body = subspace_angles(body_factor[:, :, i], body_factor[:, :, j])
+                tail = subspace_angles(tail_factor[:, :, i], tail_factor[:, :, j])
+                distance_matrix[i, j] = head + body + tail
+                distance_matrix[j, i] = distance_matrix[i, j]
+
+        inf = float('inf')
+        distance_matrix.fill_diagonal_(inf)
+        for i in range(num_filters-1):
+            # since distance_matrix is symmetrix, get only d[i,j] or d[j,i]
+            pos = torch.where(distance_matrix == torch.min(distance_matrix))[0]
+            row, col = pos[0].item(), pos[1].item()
+            # Compute the sum of the distance of filter `row` to other filters (excluding `inf` value)
+            row_sum = torch.sum(
+                distance_matrix[row][distance_matrix[row] != inf])
+            # Compute the sum of the distance of filter `col` to other filters (excluding `inf` value)
+            col_sum = torch.sum(
+                distance_matrix[:, col][distance_matrix[:, col] != inf])
+
+            # Choose the filter with smaller sum of distances as the less important filter
+            index = row if row_sum < col_sum else col
+
+            # Update saliency array and set the distances of the selected filter to `inf`
+            saliency[i] = index
+            distance_matrix[index, :] = distance_matrix[:, index] = inf
+
     return saliency
 
 
@@ -106,5 +140,8 @@ def subspace_angles(A, B):
         A, B = B, A
     B = B - torch.matmul(A, torch.matmul(A.transpose(1, 0), B))
     theta = torch.asin(torch.min(torch.tensor(1.0), torch.norm(B)))
+
+    theta = torch.abs(theta)
+    theta = torch.remainder(theta, pi/2)
 
     return theta

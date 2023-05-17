@@ -46,8 +46,8 @@ def parse_args():
                         help='use pre-specified rank for all layers')
     parser.add_argument('-cpr', '--compress_rate', type=str, default='[0.]*100',
                         help='list of compress rate of each layer')
-    parser.add_argument('--criterion', type=str, default='csa',
-                        choices=('csa', 'vbd'), help='criterion for similarity measure')
+    parser.add_argument('--criterion', type=str, default='pabs',
+                        choices=('pabs', 'csa', 'vbd'), help='criterion for similarity measure')
     parser.add_argument('--name', type=str, default='',
                         help='wandb project name')
 

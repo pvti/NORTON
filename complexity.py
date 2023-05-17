@@ -32,3 +32,28 @@ if __name__ == '__main__':
                                                  verbose=True)
         print('{:<30}  {:<8}'.format('Computational complexity: ', macs))
         print('{:<30}  {:<8}'.format('Number of parameters: ', params))
+
+        # ori_model = eval(args.arch)([0.0]*100, 0)
+        # ori_macs, ori_params = get_model_complexity_info(ori_model,
+        #                                          (3, 32, 32),
+        #                                          as_strings=False,
+        #                                          print_per_layer_stat=False,
+        #                                          verbose=False)
+
+
+        # for cpr in list(['[0.05]*7+[0.2]*6', '[0.2]*7+[0.5]*6', '[0.25]*7+[0.75]*6']):
+        #     compress_rate = get_cpr(cpr)
+        #     print(f'compress_rate {compress_rate}')
+        #     for rank in range(1, 9):
+        #         model = eval(args.arch)(compress_rate, rank)
+
+        #         macs, params = get_model_complexity_info(model,
+        #                                          (3, 32, 32),
+        #                                          as_strings=False,
+        #                                          print_per_layer_stat=False,
+        #                                          verbose=False)
+
+        #         mac_reduced = (1 - macs/ori_macs)*100
+        #         param_reduced = (1- params/ori_params)*100
+        #         print(f'rank = {rank}, FLOPs_reduced = {mac_reduced:.2f}')
+        #         print(f'rank = {rank}, param_reduced = {param_reduced:.2f}')

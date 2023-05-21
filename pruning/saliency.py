@@ -55,7 +55,7 @@ def get_saliency(head_factor, body_factor, tail_factor, criterion='pabs'):
     elif criterion == 'csa':
         similarity_matrix = torch.zeros(num_filters, num_filters)
         # for i in tqdm(range(num_filters-1)):
-        for i in tqdm(range(num_filters)): # so that tqdm shows num_filters
+        for i in tqdm(range(num_filters)):  # so that tqdm shows num_filters
             for j in range(i+1, num_filters):
                 head = CSA(head_factor[:, :, i], head_factor[:, :, j])
                 # body = CSA(body_factor[:, :, i], body_factor[:, :, j])
@@ -86,7 +86,7 @@ def get_saliency(head_factor, body_factor, tail_factor, criterion='pabs'):
 
     elif criterion == 'pabs':
         distance_matrix = torch.zeros(num_filters, num_filters)
-        for i in tqdm(range(num_filters-1)):
+        for i in tqdm(range(num_filters)):
             for j in range(i+1, num_filters):
                 head = subspace_angles(head_factor[:, :, i], head_factor[:, :, j])
                 body = subspace_angles(body_factor[:, :, i], body_factor[:, :, j])
@@ -145,3 +145,22 @@ def subspace_angles(A, B):
     theta = torch.remainder(theta, pi/2)
 
     return theta
+
+
+def get_saliency_conv(weight):
+    """
+    Computes the saliency of each filter in 1x1 convolution of resnet50 based on its norm.
+
+    Args:
+        weight (torch.Tensor): The weight tensor of a convolution layer, of shape (out_channels, in_channels, 1, 1).
+
+    Returns:
+        saliency (torch.Tensor): A 1D tensor containing the saliency of each filter.
+    """
+    num_filters = weight.size(0)
+    saliency = []
+    for i in tqdm(range(num_filters)):
+        filter = weight[i]
+        saliency.append(torch.norm(filter).view(1))
+
+    return torch.cat(saliency)

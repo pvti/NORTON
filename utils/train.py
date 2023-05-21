@@ -13,6 +13,7 @@ def train(epoch, train_loader, model, criterion, optimizer, scheduler, logger):
     logger.info('learning_rate: ' + str(cur_lr))
 
     num_iter = len(train_loader)
+    print_freq = num_iter // 10
     for i, (images, target) in enumerate(train_loader):
         images = images.cuda()
         target = target.cuda()
@@ -33,7 +34,7 @@ def train(epoch, train_loader, model, criterion, optimizer, scheduler, logger):
         loss.backward()
         optimizer.step()
 
-        if i % 100 == 0:
+        if i % print_freq == 0:
             logger.info(
                 'Epoch[{0}]({1}/{2}): '
                 'Loss {loss.avg:.4f} '

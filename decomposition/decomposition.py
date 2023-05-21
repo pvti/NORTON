@@ -10,6 +10,39 @@ from .CPDBlock import CPDBlock
 tl.set_backend("pytorch")
 
 
+def decompose(model: nn.Module, rank: int, n_iter_max=300, n_iter_singular_error=3):
+    """
+    Decompose a Conv2d model to a CPDBlock model.
+
+    Args:
+        model (nn.Module): a Conv2d form model.
+        rank (int): rank.
+        n_iter_max (int): max number of iterations for parafac.
+        n_iter_singular_error (int): number of iterations for singular maxtrix error handler.
+
+    Returns:
+        model (nn.Module): a CPDBlock form model
+
+    """
+
+    for name, module in model._modules.items():
+        if isinstance(module, nn.Conv2d):
+            if (module.kernel_size[0] == 3):
+                print(f'decomposing: {name}')
+                model._modules[name] = conv_to_cpdblock(
+                    module, rank, n_iter_max, n_iter_singular_error)
+            else:
+                print(
+                    f'module {name} has kernel_size = {module.kernel_size}, passing')
+
+        elif len(list(module.children())) > 0:
+            print(f'recursing module: {name}')
+            # recurse
+            model._modules[name] = decompose(module, rank)
+
+    return model
+
+
 def conv_weights_to_factors(weights: torch.Tensor, rank: int, n_iter_max=300, n_iter_singular_error=3):
     """
     Decompose a Conv2d's weights to factors.

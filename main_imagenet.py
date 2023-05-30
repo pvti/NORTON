@@ -64,10 +64,6 @@ def parse_args():
 
 args = parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-if len(args.gpu) > 1:
-    name_base = 'module.'
-else:
-    name_base = ''
 
 args.job_dir = os.path.join(args.job_dir, args.arch,
                             str(args.rank), args.criterion, args.compress_rate)
@@ -144,12 +140,9 @@ def prune_resnet(model, ori_state_dict):
                             updated_head_factor, ori_body_factor, ori_tail_factor, cur_out_channels, args.criterion)
                         pointwise_weight, vertical_weight, horizontal_weight = factors_to_cpdblock_weights(
                             head_factor, body_factor, tail_factor)
-                        state_dict[name_base +
-                                   pointwise_weight_name] = pointwise_weight
-                        state_dict[name_base +
-                                   vertical_weight_name] = vertical_weight
-                        state_dict[name_base +
-                                   horizontal_weight_name] = horizontal_weight
+                        state_dict[pointwise_weight_name] = pointwise_weight
+                        state_dict[vertical_weight_name] = vertical_weight
+                        state_dict[horizontal_weight_name] = horizontal_weight
 
                         if record_last:
                             last_select_index = select_index
@@ -157,26 +150,20 @@ def prune_resnet(model, ori_state_dict):
                     # out_channels is identical but in_channels changed
                     elif last_select_index is not None:
                         logger.info(f'treat {conv_name} which is not pruned')
-                        state_dict[name_base +
-                                   vertical_weight_name] = ori_state_dict[vertical_weight_name]
-                        state_dict[name_base +
-                                   horizontal_weight_name] = ori_state_dict[horizontal_weight_name]
+                        state_dict[vertical_weight_name] = ori_state_dict[vertical_weight_name]
+                        state_dict[horizontal_weight_name] = ori_state_dict[horizontal_weight_name]
                         for i in range(ori_num_filter):
                             for index_j, j in enumerate(last_select_index):
-                                state_dict[name_base +
-                                           pointwise_weight_name][i][index_j] = ori_state_dict[pointwise_weight_name][i][j]
+                                state_dict[pointwise_weight_name][i][index_j] = ori_state_dict[pointwise_weight_name][i][j]
                         if record_last:
                             last_select_index = None
 
                     # none changes
                     else:
                         logger.info(f'treat {conv_name} which is untouched')
-                        state_dict[name_base +
-                                   pointwise_weight_name] = ori_state_dict[pointwise_weight_name]
-                        state_dict[name_base +
-                                   vertical_weight_name] = ori_state_dict[vertical_weight_name]
-                        state_dict[name_base +
-                                   horizontal_weight_name] = ori_state_dict[horizontal_weight_name]
+                        state_dict[pointwise_weight_name] = ori_state_dict[pointwise_weight_name]
+                        state_dict[vertical_weight_name] = ori_state_dict[vertical_weight_name]
+                        state_dict[horizontal_weight_name] = ori_state_dict[horizontal_weight_name]
                         if record_last:
                             last_select_index = None
 
@@ -184,7 +171,7 @@ def prune_resnet(model, ori_state_dict):
                 else:
                     conv_weight_name = conv_name + '.weight'
                     oriweight = ori_state_dict[conv_weight_name]
-                    curweight = state_dict[name_base+conv_weight_name]
+                    curweight = state_dict[conv_weight_name]
                     orifilter_num = oriweight.size(0)
                     currentfilter_num = curweight.size(0)
 
@@ -196,20 +183,20 @@ def prune_resnet(model, ori_state_dict):
                         if last_select_index is not None:
                             for index_i, i in enumerate(select_index):
                                 for index_j, j in enumerate(last_select_index):
-                                    state_dict[name_base+conv_weight_name][index_i][index_j] = \
+                                    state_dict[conv_weight_name][index_i][index_j] = \
                                         ori_state_dict[conv_weight_name][i][j]
 
                                 for bn_part in bn_part_name:
-                                    state_dict[name_base + bn_name + bn_part][index_i] = \
+                                    state_dict[bn_name + bn_part][index_i] = \
                                         ori_state_dict[bn_name + bn_part][i]
 
                         else:
                             for index_i, i in enumerate(select_index):
-                                state_dict[name_base+conv_weight_name][index_i] = \
+                                state_dict[conv_weight_name][index_i] = \
                                     ori_state_dict[conv_weight_name][i]
 
                                 for bn_part in bn_part_name:
-                                    state_dict[name_base + bn_name + bn_part][index_i] = \
+                                    state_dict[bn_name + bn_part][index_i] = \
                                         ori_state_dict[bn_name + bn_part][i]
 
                         if record_last:
@@ -218,36 +205,34 @@ def prune_resnet(model, ori_state_dict):
                     elif last_select_index is not None:
                         for index_i in range(orifilter_num):
                             for index_j, j in enumerate(last_select_index):
-                                state_dict[name_base+conv_weight_name][index_i][index_j] = \
+                                state_dict[conv_weight_name][index_i][index_j] = \
                                     ori_state_dict[conv_weight_name][index_i][j]
 
                         for bn_part in bn_part_name:
-                            state_dict[name_base + bn_name + bn_part] = \
+                            state_dict[bn_name + bn_part] = \
                                 ori_state_dict[bn_name + bn_part]
 
                         if record_last:
                             last_select_index = None
 
                     else:
-                        state_dict[name_base+conv_weight_name] = oriweight
+                        state_dict[conv_weight_name] = oriweight
                         for bn_part in bn_part_name:
-                            state_dict[name_base + bn_name + bn_part] = \
+                            state_dict[bn_name + bn_part] = \
                                 ori_state_dict[bn_name + bn_part]
                         if record_last:
                             last_select_index = None
 
-                state_dict[name_base + bn_name +
-                           '.num_batches_tracked'] = ori_state_dict[bn_name + '.num_batches_tracked']
+                state_dict[bn_name + '.num_batches_tracked'] = ori_state_dict[bn_name +
+                                                                              '.num_batches_tracked']
 
     # treat remaining layers which are totally untouched/unprocessed
     for name, module in model.named_modules():
         name = name.replace('module.', '')
         if isinstance(module, nn.Linear):
             logger.info(f'treat {name} which is untouched')
-            state_dict[name_base+name +
-                       '.weight'] = ori_state_dict[name + '.weight']
-            state_dict[name_base+name +
-                       '.bias'] = ori_state_dict[name + '.bias']
+            state_dict[name + '.weight'] = ori_state_dict[name + '.weight']
+            state_dict[name + '.bias'] = ori_state_dict[name + '.bias']
 
     model.load_state_dict(state_dict)
 

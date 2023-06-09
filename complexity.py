@@ -38,10 +38,11 @@ if __name__ == '__main__':
             inp_img_size = 224
 
         macs_ptfl, params_ptfl = get_model_complexity_info(model,
-                                                 (3, inp_img_size, inp_img_size),
-                                                 as_strings=False,
-                                                 print_per_layer_stat=False,
-                                                 verbose=False)
+                                                           (3, inp_img_size,
+                                                            inp_img_size),
+                                                           as_strings=False,
+                                                           print_per_layer_stat=False,
+                                                           verbose=False)
 
         input = torch.randn(1, 3, inp_img_size, inp_img_size)
         macs_thop, params_thop = profile(model, inputs=(input, ))
@@ -52,12 +53,17 @@ if __name__ == '__main__':
         print('{:<30}  {:<8}'.format('Computational complexity: ', macs))
         print('{:<30}  {:<8}'.format('Number of parameters: ', params))
 
-        # ori_model = eval(args.arch)([0.0]*100, 0)
-        # ori_macs, ori_params = get_model_complexity_info(ori_model,
-        #                                          (3, inp_img_size, inp_img_size),
-        #                                          as_strings=False,
-        #                                          print_per_layer_stat=False,
-        #                                          verbose=False)
+        ori_model = eval(args.arch)([0.0]*100, 0)
+        ori_macs, ori_params = get_model_complexity_info(ori_model,
+                                                         (3, inp_img_size,
+                                                          inp_img_size),
+                                                         as_strings=False,
+                                                         print_per_layer_stat=False,
+                                                         verbose=False)
+        mac_reduced = (1 - macs/ori_macs)*100
+        param_reduced = (1 - params/ori_params)*100
+        print(f'FLOPs_reduced = {mac_reduced:.2f}')
+        print(f'param_reduced = {param_reduced:.2f}')
 
         # for cpr in list(['[0.05]*7+[0.2]*6', '[0.2]*7+[0.5]*6', '[0.25]*7+[0.75]*6']):
         #     compress_rate = get_cpr(cpr)

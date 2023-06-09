@@ -69,6 +69,7 @@ sweep_configuration = {
     'parameters': {
         'batch_size': {'values': [128, 256, 512]},
         'lr': {'values': [0.1, 0.05, 0.01, 0.005, 0.001]},
+        'weight_decay': {'values': [0.0005, 0.005]},
     }
 }
 
@@ -81,6 +82,7 @@ def main():
 
     args.batch_size = wandb.config.batch_size
     args.lr = wandb.config.lr
+    args.weight_decay = wandb.config.weight_decay
 
     logger.info('args = %s', args)
 

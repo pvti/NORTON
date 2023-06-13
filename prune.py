@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument('--data_dir', type=str, default='../data',
                         help='path to dataset')
     parser.add_argument('--arch', type=str, default='vgg_16_bn',
-                        choices=('vgg_16_bn', 'resnet_56', 'densenet_40'),
+                        choices=('vgg_16_bn', 'resnet_56', 'resnet_110', 'densenet_40'),
                         help='architecture')
     parser.add_argument('--ckpt', type=str,
                         default='result/vgg_16_bn/6/[0.]*100/vgg_16_bn_[0.]*100_6.pt',
@@ -431,6 +431,8 @@ def main():
         prune_vgg(model, ori_state_dict)
     elif args.arch == 'resnet_56':
         prune_resnet(model, ori_state_dict, 56)
+    elif args.arch == 'resnet_110':
+        prune_resnet(model, ori_state_dict, 110)
     elif args.arch == 'densenet_40':
         prune_densenet(model, ori_state_dict)
 

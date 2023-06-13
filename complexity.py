@@ -15,6 +15,7 @@ def parse_args():
     parser.add_argument('--arch', type=str, default='vgg_16_bn',
                         choices=('vgg_16_bn',
                                  'resnet_56',
+                                 'resnet_110',
                                  'densenet_40',
                                  'resnet_50'),
                         help='architecture')

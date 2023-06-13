@@ -173,5 +173,5 @@ def resnet_56(compress_rate=[0.0]*30, rank=0):
     return ResNet(BasicBlock, num_layers=56, compress_rate=compress_rate, rank=rank)
 
 
-def resnet_110(compress_rate=[0.0]*47, rank=0):
+def resnet_110(compress_rate=[0.0]*57, rank=0):
     return ResNet(BasicBlock, num_layers=110, compress_rate=compress_rate, rank=rank)

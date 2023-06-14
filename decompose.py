@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument('--data_dir', type=str, default='../data',
                         help='path to dataset')
     parser.add_argument('--arch', type=str, default='vgg_16_bn',
-                        choices=('vgg_16_bn', 'resnet_56', 'densenet_40'), help='architecture')
+                        choices=('vgg_16_bn', 'resnet_56', 'resnet_110', 'densenet_40'), help='architecture')
     parser.add_argument('--ckpt', type=str, default='checkpoint/cifar10/vgg_16_bn.pt',
                         help='checkpoint path')
     parser.add_argument('--job_dir', type=str, default='result',
@@ -85,7 +85,7 @@ def main():
     compress_rate = utils.get_cpr(args.compress_rate)
     model = eval(args.arch)(compress_rate=compress_rate).cuda()
     ckpt = torch.load(args.ckpt, map_location='cuda:0')
-    model.load_state_dict(ckpt['state_dict'])
+    model.load_state_dict(ckpt['state_dict'], strict=False)
 
     # decompose
     logger.info('Decomposing model:')
@@ -100,7 +100,7 @@ def main():
     model = finetune(model, train_loader, val_loader, args.epochs, criterion)
 
     # save model
-    path = os.path.join(args.job_dir, f'{args.arch}_{name}.pt')
+    path = os.path.join(args.job_dir, f'{args.arch}_{name}_{dcp_acc}.pt')
     torch.save({'state_dict': model.state_dict(),
                 'rank': args.rank},
                path)

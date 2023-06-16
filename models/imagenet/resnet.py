@@ -123,10 +123,14 @@ class ResNet50(nn.Module):
         self.bn1 = nn.BatchNorm2d(overall_channel[layer_num])
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = nn.ModuleList()
-        self.layer2 = nn.ModuleList()
-        self.layer3 = nn.ModuleList()
-        self.layer4 = nn.ModuleList()
+        # self.layer1 = nn.ModuleList()
+        # self.layer2 = nn.ModuleList()
+        # self.layer3 = nn.ModuleList()
+        # self.layer4 = nn.ModuleList()
+        self.layer1 = nn.Sequential()
+        self.layer2 = nn.Sequential()
+        self.layer3 = nn.Sequential()
+        self.layer4 = nn.Sequential()
 
         layer_num += 1
         for i in range(len(stage_repeat)):

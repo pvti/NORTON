@@ -248,6 +248,39 @@ on the [COCO 2017](http://cocodataset.org/#download) dataset.
 For the specifics concerning training and inference,
 see the [Advanced](#advanced) section.
 
+0. #### Install without docker (recommended):
+
+Check Cuda version:
+```bash
+$ nvcc --version
+Copyright (c) 2005-2022 NVIDIA Corporation
+Built on Wed_Jun__8_16:49:14_PDT_2022
+Cuda compilation tools, release 11.7, V11.7.99
+Build cuda_11.7.r11.7/compiler.31442593_0
+```
+Create a new conda environment:
+```bash
+conda create -n ssd python=3.11
+conda activate ssd
+```
+Install PyTorch with conda. **The version of Pytorch's cuda must be identical to the machine's cuda:**
+```bash
+conda install pytorch torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia
+```
+Install Nvidia apex https://github.com/NVIDIA/apex
+
+Install Nvidia dali https://github.com/NVIDIA/DALI
+
+Clone this repo, and enter SSD folder:
+```bash
+git clone https://github.com/NVIDIA/DeepLearningExamples
+cd DeepLearningExamples/PyTorch/Detection/SSD
+```
+
+Install requirements:
+```bash
+python -m pip install --no-cache-dir -r requirements.txt
+```
 
 1. Clone the repository.
 ```
@@ -272,6 +305,8 @@ docker run --rm -it --gpus=all --ipc=host -v $COCO_DIR:/coco nvidia_ssd
 ```
 
 **Note**: the default mount point in the container is `/coco`.
+
+
 
 5. Start training.
 

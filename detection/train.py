@@ -34,7 +34,7 @@ from group_by_aspect_ratio import create_aspect_ratio_groups, GroupedBatchSample
 from torchvision.transforms import InterpolationMode
 from transforms import SimpleCopyPaste
 
-from faster_rcnn import fasterrcnn_CPresnet50_fpn
+from model import fasterrcnn_CPresnet50_fpn, maskrcnn_CPresnet50_fpn
 
 
 def copypaste_collate_fn(batch):
@@ -226,8 +226,7 @@ def main(args):
         if args.rpn_score_thresh is not None:
             kwargs["rpn_score_thresh"] = args.rpn_score_thresh
     compress_rate = utils.get_cpr(args.compress_rate)
-    model = fasterrcnn_CPresnet50_fpn(
-        weights=args.weights, weights_backbone=args.weights_backbone, compress_rate=compress_rate, rank=args.decompose_rank, num_classes=num_classes, **kwargs
+    model = eval(args.model)(weights=args.weights, weights_backbone=args.weights_backbone, compress_rate=compress_rate, rank=args.decompose_rank, num_classes=num_classes, **kwargs
     )
     model.to(device)
     if args.distributed and args.sync_bn:

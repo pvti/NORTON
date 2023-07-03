@@ -2,7 +2,7 @@ import argparse
 import torch
 from models.cifar10 import *
 from models.imagenet import *
-from detection.faster_rcnn import fasterrcnn_CPresnet50_fpn
+from detection.model import fasterrcnn_CPresnet50_fpn
 from utils.common import get_cpr
 from ptflops import get_model_complexity_info
 from thop import profile

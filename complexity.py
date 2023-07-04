@@ -2,7 +2,7 @@ import argparse
 import torch
 from models.cifar10 import *
 from models.imagenet import *
-from detection.model import fasterrcnn_CPresnet50_fpn, maskrcnn_CPresnet50_fpn
+from detection.model import fasterrcnn_CPresnet50_fpn, maskrcnn_CPresnet50_fpn, keypointrcnn_CPresnet50_fpn
 from utils.common import get_cpr
 from ptflops import get_model_complexity_info
 from thop import profile
@@ -21,7 +21,8 @@ def parse_args():
                                  'densenet_40',
                                  'resnet_50',
                                  'fasterrcnn_CPresnet50_fpn',
-                                 'maskrcnn_CPresnet50_fpn'
+                                 'maskrcnn_CPresnet50_fpn',
+                                 'keypointrcnn_CPresnet50_fpn'
                                 ),
                         help='architecture')
     parser.add_argument('-r', '--rank', dest='rank', type=int, default=0,

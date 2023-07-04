@@ -34,7 +34,7 @@ from group_by_aspect_ratio import create_aspect_ratio_groups, GroupedBatchSample
 from torchvision.transforms import InterpolationMode
 from transforms import SimpleCopyPaste
 
-from model import fasterrcnn_CPresnet50_fpn, maskrcnn_CPresnet50_fpn
+from model import fasterrcnn_CPresnet50_fpn, maskrcnn_CPresnet50_fpn, keypointrcnn_CPresnet50_fpn
 
 
 def copypaste_collate_fn(batch):

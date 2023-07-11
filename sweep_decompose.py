@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument('--data_dir', type=str, default='../data',
                         help='path to dataset')
     parser.add_argument('--arch', type=str, default='vgg_16_bn',
-                        choices=('vgg_16_bn', 'resnet_56'), help='architecture')
+                        choices=('vgg_16_bn', 'resnet_56', 'resnet_110', 'densenet_40'), help='architecture')
     parser.add_argument('--ckpt', type=str, default='checkpoint/cifar10/vgg_16_bn.pt',
                         help='checkpoint path')
     parser.add_argument('--job_dir', type=str, default='result',
@@ -42,7 +42,7 @@ def parse_args():
                         help='use pre-specified rank for all layers')
     parser.add_argument('-cpr', '--compress_rate', type=str, default='[0.]*100',
                         help='list of compress rate of each layer')
-    parser.add_argument('--n_iter_max', type=int, default=100,
+    parser.add_argument('--n_iter_max', type=int, default=1000,
                         help='max number of iterations for parafac')
     parser.add_argument('--n_iter_singular_error', type=int, default=3,
                         help='number of iterations for singular maxtrix error handler')
@@ -72,14 +72,13 @@ sweep_configuration = {
             'name': 'top1'
     },
     'parameters': {
-        'batch_size': {'values': [128, 256, 512]},
         'lr': {'values': [0.1, 0.05, 0.01, 0.005, 0.001]},
         'weight_decay': {'values': [5e-3, 5e-4]}
     }
 }
 
 sweep_id = wandb.sweep(sweep=sweep_configuration,
-                       project=f"Sweep decomposing r = {args.rank}")
+                       project=f"Sweep decomposing r = {args.rank} arch = {args.arch} cpr = {args.compress_rate}")
 
 
 def decompose(model: nn.Module, rank: int, n_iter_max=300, n_iter_singular_error=3):
@@ -113,7 +112,6 @@ def decompose(model: nn.Module, rank: int, n_iter_max=300, n_iter_singular_error
 def main():
     run = wandb.init()
 
-    args.batch_size = wandb.config.batch_size
     args.lr = wandb.config.lr
     args.weight_decay = wandb.config.weight_decay
 

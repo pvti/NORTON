@@ -37,6 +37,10 @@ def parse_args():
                         help='num of fine-tuning epochs')
     parser.add_argument('--lr', type=float, default=0.05,
                         help='init learning rate')
+    parser.add_argument("--lr-warmup-epochs", default=5, type=int,
+                        help="the number of epochs to warmup (default: 5)")
+    parser.add_argument("--lr-warmup-decay", default=0.01, type=float,
+                        help="the decay for lr")
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
     parser.add_argument('--weight_decay', type=float, default=5e-4,
                         help='weight decay')
@@ -451,8 +455,12 @@ def main():
 def finetune(model, train_loader, val_loader, epochs, criterion):
     optimizer = torch.optim.SGD(model.parameters(
     ), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=epochs)
+    main_lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=epochs-args.lr_warmup_epochs)
+    warmup_lr_scheduler = torch.optim.lr_scheduler.LinearLR(
+        optimizer, start_factor=args.lr_warmup_decay, total_iters=args.lr_warmup_epochs)
+    scheduler = torch.optim.lr_scheduler.SequentialLR(
+        optimizer, schedulers=[warmup_lr_scheduler, main_lr_scheduler], milestones=[args.lr_warmup_epochs])
 
     _, best_top1_acc, _ = validate(val_loader, model, criterion, logger)
     best_model_state = copy.deepcopy(model.state_dict())

@@ -242,7 +242,7 @@ If the code and paper help your research, please kindly cite:
 ```
 @misc{pham2023norton,
     title={Enhanced network compression through tensor decompositions and pruning}, 
-    author={Van Tien, Pham and Yassine Zniyed and Thanh Phuong, Nguyen},
+    author={Van Tien, Pham and Yassine, Zniyed and Thanh Phuong, Nguyen},
     year={2023},
     howpublished={\url{https://github.com/pvtien96/NORTON}},
   }

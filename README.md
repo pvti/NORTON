@@ -26,7 +26,7 @@ In this work, we propose NORTON (enhanced Network cOmpRession through TensOr dec
   <img class="image" src="assets\OneLayer.png" width="48%" height="100%">
 </div>
 <div align="center ">
-    Left: Graphic illustration of the NORTON approach. Right: The decomposition then pruning process for one layer.
+    Left: Graphic illustration of the NORTON approach. Right: The decomposition and then pruning process for one layer.
 </div>
 
 
@@ -52,7 +52,7 @@ In this work, we propose NORTON (enhanced Network cOmpRession through TensOr dec
 
 In order to demonstrate the adaptability of NORTON, we assess three representative architectures: VGG-16-BN, ResNet-56/110 with residual blocks, and DenseNet-40 with dense blocks. These models are tested on the CIFAR-10 dataset. Additionally, to validate the scalability of NORTON, experiments are conducted on the challenging ImageNet dataset using the ResNet-50 architecture. Furthermore, the compressed ResNet-50 model is employed as the backbone network for FasterRCNN-FPN, MaskRCNN, and KeypointRCNN on the COCO-2017 dataset.
 
-NORTON is compared with the SOTA in the fields of low-rank decompositions, structured pruning and hybrid methods. 
+NORTON is compared with the SOTA in the fields of low-rank decompositions, structured pruning, and hybrid methods. 
 
 1. VGG-16-BN/CIFAR-10
 <div align="center">
@@ -218,11 +218,11 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 
 
 # 🌟 News
-* **2023.7.26:** Paper submitted to IEEE TNNLS. Code will be gradually released. Stay tuned for more exciting updates!⌛
+* **2023.7.26:** Paper submitted to IEEE TNNLS. The code will be gradually released. Stay tuned for more exciting updates!⌛
 
 # 🔓 Verification and Reproducibility
 
-Baseline and compressed models will be upload soon.
+Baseline and compressed models will be uploaded soon.
 
 # 🕙 ToDo
 - [ ] Write detailed documentation.
@@ -234,7 +234,7 @@ Baseline and compressed models will be upload soon.
 
 Your contributions can play a significant role in this endeavor, and we warmly welcome your participation in our project!
 
-To contact us, never hestitate to send an email to `pvtien96@gmail.com` (for technical problem), `zniyed@univ-tln.fr` (for tensor decompositions), or `tpnguyen@univ-tln.fr` (for general development)!
+To contact us, never hesitate to send an email to [pvtien96@gmail.com](mailto:pvtien96@gmail.com) (for technical problems), [zniyed@univ-tln.fr](mailto:zniyed@univ-tln.fr) (for tensor decompositions), or [tpnguyen@univ-tln.fr](mailto:tpnguyen@univ-tln.fr) (for general development)!
 <br></br>
 
 # Citation

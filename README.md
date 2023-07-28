@@ -218,15 +218,16 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 
 
 # 🌟 News
+* **2023.7.28:** Baseline and compressed checkpoints :gift: are released.
 * **2023.7.26:** Paper submitted to IEEE TNNLS. The code will be gradually released. Stay tuned for more exciting updates!⌛
 
 # 🔓 Verification and Reproducibility
 
-Baseline and compressed models will be uploaded soon.
+Please download the [checkpoints](https://github.com/pvtien96/NORTON/releases/tag/v0.1.0) and evaluate their performance with the corresponding script and dataset. Detailed instructions will be added soon.
 
 # 🕙 ToDo
 - [ ] Write detailed documentation.
-- [ ] Upload compressed models.
+- [x] Upload compressed models.
 - [ ] Clean code.
 
 # Contact

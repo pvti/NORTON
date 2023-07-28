@@ -59,7 +59,7 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 
 | Model                       | Top-1 (%)| MACs (↓%)     | Params. (↓%)  |
 |-----------------------------|----------|---------------|---------------|
-| VGG-16-BN                   | 93.96    | 313.73M (00)  | 14.98M (00)   |
+| *VGG-16-BN*                 | 93.96    | 313.73M (00)  | 14.98M (00)   |
 | HRank-1                     | 93.43    | 145.61M (54)  | 2.51M (83)    |
 | CHIP                        | 93.86    | 131.17M (58)  | 2.76M (82)    |
 | EZCrop                      | 93.01    | 131.17M (58)  | 2.76M (82)    |
@@ -96,7 +96,7 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 
 | Model                   | Top-1(%) | MACs (↓%)    | Params. (↓%) |
 |-------------------------|---------|--------------|--------------|
-| ResNet-56               | 93.26   | 125.49M (00) | 0.85M (00)   |
+| *ResNet-56*             | 93.26   | 125.49M (00) | 0.85M (00)   |
 | HRank-1                 | 93.52   | 88.72M (29)  | 0.71M (17)   |
 | DECORE-450              | 93.34   | 92.48M (26)  | 0.64M (24)   |
 | FilterSketch            | 93.65   | 88.05M (30)  | 0.68M (21)   |
@@ -114,12 +114,12 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 | QSFM                    | 91.88   | 50.62M (60)  | 0.25M (71)   |
 | CHIP                    | 92.05   | 34.79M (72)  | 0.24M (72)   |
 | TPP                     | 92.35   | 36.39M (71)  | N/A          |
-| **NORTON (Ours)**       | **92.27** | 40.91M (68)  | **0.23M (72)** |
+| **NORTON (Ours)**       | **93.81** | 37.52M (71)  | **0.21M (75)** |
 | HRank-3                 | 90.72   | 32.52M (74)  | 0.27M (68)   |
 | DECORE-55               | 90.85   | 23.22M (81)  | 0.13M (85)   |
 | FilterSketch            | 91.20   | 32.47M (74)  | 0.24M (72)   |
 | **NORTON (Ours)**       | **91.62** | **14.47M (89)** | **0.08M (91)** |
-| ResNet-110              | 93.50   | 256.04M (00) | 1.73M (00)   |
+| *ResNet-110*            | 93.50   | 256.04M (00) | 1.73M (00)   |
 | DECORE-500              | 93.88   | 163.30M (35) | 1.11M (36)   |
 | **NORTON (Ours)**       | **94.85** | **163.00M (35)** | **1.08M (38)** |
 | DECORE-300              | 93.50   | 96.66M (62)  | 0.61M (65)   |
@@ -132,7 +132,7 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 
 | Model               | Top-1(%) | MACs (↓%)    | Params. (↓%) |
 |---------------------|---------|--------------|--------------|
-| DenseNet-40         | 94.81   | 282.92M (00) | 1.04M (00)   |
+| *DenseNet-40*       | 94.81   | 282.92M (00) | 1.04M (00)   |
 | DECORE-175          | 94.85   | 228.96M (19) | 0.83M (21)   |
 | **NORTON (Ours)**   | **94.86** | **213.58M (26)** | **0.74M (30)** |
 | HRank-1             | 94.24   | 167.41M (41) | 0.66M (37)   |
@@ -149,7 +149,7 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 
 | Model                                 | Top-1 | Top-5 | MACs(↓%)    | Params(↓%)  |
 |---------------------------------------|-------|-------|-------------|-------------|
-| ResNet-50                             | 76.15 | 92.87 | 4.09G(00)   | 25.50M(00)  |
+| *ResNet-50*                           | 76.15 | 92.87 | 4.09G(00)   | 25.50M(00)  |
 | ABCPruner-100%                        | 72.84 | 92.97 | 2.56G(37)   | 18.02M(29)  |
 | CLR-RNF-0.2                           | 74.85 | 92.31 | 2.45G(40)   | 16.92M(34)  |
 | EPruner-0.81                          | 74.95 | 92.36 | 2.37G(42)   | N/A         |

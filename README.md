@@ -54,7 +54,9 @@ In order to demonstrate the adaptability of NORTON, we assess three representati
 
 NORTON is compared with the SOTA in the fields of low-rank decompositions, structured pruning, and hybrid methods. 
 
-1. VGG-16-BN/CIFAR-10
+<details>
+  <summary><strong>1. VGG-16-BN/CIFAR-10</strong></summary>
+
 <div align="center">
 
 | Model                       | Top-1 (%)| MACs (↓%)     | Params. (↓%)  |
@@ -91,7 +93,12 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 | **NORTON (Ours)**           | **92.54**    | **13.54M (96)**   | **0.24M (98)**    |
 | **NORTON (Ours)**           | **90.32**    | **4.58M (99)**    | **0.14M (99)**    |
 </div>
-2. ResNet-56/110/CIFAR-10
+
+</details>
+
+<details>
+  <summary><strong>2. ResNet-56/110/CIFAR-10</strong></summary>
+
 <div align="center">
 
 | Model                   | Top-1(%) | MACs (↓%)    | Params. (↓%) |
@@ -127,7 +134,12 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 | DECORE-175              | 92.71   | 58.37M (77)  | 0.35M (80)   |
 | **NORTON (Ours)**       | **92.77** | **47.34M (82)** | **0.30M (83)** |
 </div>
-3. DenseNet-40/CIFAR-10
+
+</details>
+
+<details>
+  <summary><strong>3. DenseNet-40/CIFAR-10</strong></summary>
+
 <div align="center">
 
 | Model               | Top-1(%) | MACs (↓%)    | Params. (↓%) |
@@ -144,8 +156,13 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 | DECORE-70           | 94.04   | 128.13M (55) | 0.37M (65)   |
 | **NORTON (Ours)**   | **94.14** | 123.14M (58)** | **0.40M (62)** |
 </div>
-4. ResNet-50/Imagenet
-<div align="center">
+
+</details>
+
+<details>
+  <summary><strong>4. ResNet-50/Imagenet</strong></summary>
+
+  <div align="center">
 
 | Model                                 | Top-1 | Top-5 | MACs(↓%)    | Params(↓%)  |
 |---------------------------------------|-------|-------|-------------|-------------|
@@ -199,7 +216,12 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 | CURL                                  | 73.39 | 91.46 | 1.11G(73)   | 6.67M(74)   |
 | **NORTON (Ours)**                     | **73.65** | **91.64** | **0.92G(78)** | **5.88M(77)** |
 </div>
-5. Faster/Mask/Keypoint-RCNN/COCO-2017
+
+</details>
+
+<details>
+  <summary><strong>5. Faster/Mask/Keypoint-RCNN/COCO-2017</strong></summary>
+
 <div align="center">
 
 | Model                               | AP<sup>0.5:0.95</sup> | AP<sup>0.5</sup> | AP<sup>0.75</sup> | AR<sup>1</sup> | AR<sup>10</sup> | AR<sup>100</sup> | MACs(↓%)     | Params(↓%)    |
@@ -215,6 +237,8 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 | **NORTON (Ours)**                   | **0.65**       | **0.86**  | **0.71**     | **0.71** | **0.91**  | **0.77**     | 114.04G(17)  | 48.10M(19)   |
 | **NORTON (Ours)**                   | 0.63            | 0.85       | 0.69        | 0.69  | 0.90      | 0.75       | **95.97G(30)** | **39.39M(34)** |
 </div>
+
+</details>
 
 
 # 🌟 News

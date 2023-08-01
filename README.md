@@ -35,7 +35,7 @@ In this work, we propose NORTON (enhanced Network cOmpRession through TensOr dec
 <img src="assets\CPDBlock.png" width=100%>
 </p>
 <div align="center ">
-    Illustration of the CPDBlock structure for classical deep learning frameworks
+    Illustration of the CPDBlock structure for conventional deep learning frameworks
 </div>
 
 
@@ -242,15 +242,176 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 
 
 # 🌟 News
+* **2023.8.01:** Detail instructions for checkpoint verification are released.
 * **2023.7.28:** Baseline and compressed checkpoints :gift: are released.
-* **2023.7.26:** Paper submitted to IEEE TNNLS. The code will be gradually released. Stay tuned for more exciting updates!⌛
+* **2023.7.26:** Paper submitted to IEEE TNNLS. The code is released. Stay tuned for more exciting updates!⌛
 
-# 🔓 Verification and Reproducibility
+# 🔓 Verification, Reproducibility and Further Development
+**1. Verify our results**
 
-Please download the [checkpoints](https://github.com/pvtien96/NORTON/releases/tag/v0.1.0) and evaluate their performance with the corresponding script and dataset. Detailed instructions will be added soon.
+  Please download the [checkpoints](https://github.com/pvtien96/NORTON/releases/tag/v0.1.0) and evaluate their performance with the corresponding script and dataset.
+
+- Download the [checkpoints](https://github.com/pvtien96/NORTON/releases/tag/v0.1.0)
+
+  <details>
+
+  *Notes:* The name of the checkpoint contains meta-data, including: architecture, decomposition rank, pruning ratio, and top-1 validation accuracy. For example, `vgg_16_bn_[0.6]*6+[0.8]*7_1_90.32.pt` is a VGG-16-BN model which is compressed with rank `1` along with a pruning ratio of `[0.6]*6+[0.8]*7`. This checkpoint reaches `90.32`% top-1 validation accuracy.
+  </details>
+
+- Download the datasets
+  <details>
+
+   The CIFAR dataset will be automatically downloaded.
+
+   The Imagenet dataset can be dowloaded [here](https://image-net.org/download-images.php) and process as follows:
+  ```bash
+  echo "Extract Train set of ImageNet"
+  cd data/imagenet &&
+  mkdir train && mv ILSVRC2012_img_train.tar train/ && cd train &&
+  tar -xvf ILSVRC2012_img_train.tar && rm -f ILSVRC2012_img_train.tar
+  find . -name "*.tar" | while read NAME ; do mkdir -p "${NAME%.tar}"; tar -xvf "${NAME}" -C "${NAME%.tar}"; rm -f "${NAME}"; done
+  cd ..
+  # val
+  echo "Extract Val set of ImageNet"
+  mkdir val && mv ILSVRC2012_img_val.tar val/ && mv valprep.sh val && cd val &&
+  tar -xvf ILSVRC2012_img_val.tar &&
+  cat valprep.sh | bash
+  cd ..
+  ```
+  </details>
+
+- Use [evaluate.py](./evaluate.py) to validate the performance of the checkpoints.
+
+  <details>
+
+  ```bash
+  (base) tien@p3660:~/NORTON$ python evaluate.py -h
+  usage: Model evaluation [-h] [--data_dir DATA_DIR]
+                          [--arch {vgg_16_bn,resnet_56,resnet_110,densenet_40,resnet_50}] [--ckpt CKPT]
+                          [--batch_size BATCH_SIZE] [--gpu GPU] [-r RANK] [-cpr COMPRESS_RATE]
+
+  optional arguments:
+    -h, --help            show this help message and exit
+    --data_dir DATA_DIR   path to dataset
+    --arch {vgg_16_bn,resnet_56,resnet_110,densenet_40,resnet_50}
+                          architecture
+    --ckpt CKPT           checkpoint path
+    --batch_size BATCH_SIZE
+                          batch size
+    --gpu GPU             Select gpu to use
+    -r RANK, --rank RANK  use pre-specified rank for all layers
+    -cpr COMPRESS_RATE, --compress_rate COMPRESS_RATE
+                          list of compress rate of each layer
+  ```
+
+  For examples:
+  ```bash
+  (base) tien@p3660:~/NORTON$ python verify.py --arch vgg_16_bn --ckpt ~/ckpt/compressed/vgg16/vgg_16_bn_\[0.6\]\*6+\[0.8\]\*7_1_90.32.pt -r 1 -cpr [0.6]*6+[0.8]*7
+  08/01 11:59:40 AM | args = Namespace(data_dir='~/data', arch='vgg_16_bn', ckpt='/home/tien/ckpt/compressed/vgg16/vgg_16_bn_[0.6]*6+[0.8]*7_1_90.32.pt', batch_size=256, rank=1, compress_rate='[0.6]*6+[0.8]*7')
+  Loading data:
+  Files already downloaded and verified
+  Files already downloaded and verified
+  08/01 11:59:41 AM | Loading checkpoint
+  08/01 11:59:41 AM | Evaluating model:
+  08/01 11:59:42 AM |  * Acc@1 90.320 Acc@5 99.450
+
+  (base) tien@p3660:~/NORTON$ python verify.py --arch densenet_40 --ckpt ~/ckpt/compressed/densenet40/densenet_40_\[0.\]+\[0.08\]\*6+\[0.09\]\*6+\[0.08\]\*26_8_94.86.pt -r 8 -cpr [0.]+[0.08]*6+[0.09]*6+[0.08]*26
+  08/01 12:00:43 PM | args = Namespace(data_dir='~/data', arch='densenet_40', ckpt='/home/tien/ckpt/compressed/densenet40/densenet_40_[0.]+[0.08]*6+[0.09]*6+[0.08]*26_8_94.86.pt', batch_size=256, rank=8, compress_rate='[0.]+[0.08]*6+[0.09]*6+[0.08]*26')
+  Loading data:
+  Files already downloaded and verified
+  Files already downloaded and verified
+  08/01 12:00:44 PM | Loading checkpoint
+  08/01 12:00:44 PM | Evaluating model:
+  08/01 12:00:49 PM |  * Acc@1 94.860 Acc@5 99.770
+
+  (base) tien@p3660:~/NORTON$ python verify.py --arch resnet_50 --ckpt ~/ckpt/compressed/resnet50/resnet_50_pabs_\[0.\]+\[0.1\]\*2+\[0.4\]\*5+\[0.75\]\*12_1_73.65.pt -r 1 -cpr [0.]+[0.1]*2+[0.4]*5+[0.75]*12 --data_dir ~/sim3/imagenet/
+  08/01 12:05:51 PM | args = Namespace(data_dir='/home/tien/sim3/imagenet/', arch='resnet_50', ckpt='/home/tien/ckpt/compressed/resnet50/resnet_50_pabs_[0.]+[0.1]*2+[0.4]*5+[0.75]*12_1_73.65.pt', batch_size=256, gpu='0', rank=1, compress_rate='[0.]+[0.1]*2+[0.4]*5+[0.75]*12')
+  Loading data:
+  08/01 12:06:20 PM | Loading checkpoint
+  08/01 12:06:20 PM | Evaluating model:
+  08/01 12:08:38 PM |  * Acc@1 73.652 Acc@5 91.634
+  ```
+
+  </details>
+
+- Use [complexity.py](./complexity.py) to verify the complexity.
+  <details>
+
+  ```bash
+  (base) tien@p3660:~/NORTON$ python complexity.py -h
+  usage: Compute model complexity [-h] [--dataset {cifar10,imagenet,coco}]
+                                  [--arch {vgg_16_bn,resnet_56,resnet_110,densenet_40,resnet_50,fasterrcnn_CPresnet50_fpn,maskrcnn_CPresnet50_fpn,keypointrcnn_CPresnet50_fpn}]
+                                  [-r RANK] [-cpr COMPRESS_RATE]
+
+  optional arguments:
+    -h, --help            show this help message and exit
+    --dataset {cifar10,imagenet,coco}
+                          dataset
+    --arch {vgg_16_bn,resnet_56,resnet_110,densenet_40,resnet_50,fasterrcnn_CPresnet50_fpn,maskrcnn_CPresnet50_fpn,keypointrcnn_CPresnet50_fpn}
+                          architecture
+    -r RANK, --rank RANK  use pre-specified rank for all layers
+    -cpr COMPRESS_RATE, --compress_rate COMPRESS_RATE
+                          list of compress rate of each layer
+
+  ```
+
+  For examples:
+  ```bash
+  (base) tien@p3660:~/NORTON$ python complexity.py --arch vgg_16_bn -r 1 -cpr [0.6]*6+[0.8]*7
+  [INFO] Register count_convNd() for <class 'torch.nn.modules.conv.Conv2d'>.
+  [INFO] Register zero_ops() for <class 'torch.nn.modules.container.Sequential'>.
+  [INFO] Register count_normalization() for <class 'torch.nn.modules.batchnorm.BatchNorm2d'>.
+  [INFO] Register zero_ops() for <class 'torch.nn.modules.activation.ReLU'>.
+  [INFO] Register zero_ops() for <class 'torch.nn.modules.pooling.MaxPool2d'>.
+  [INFO] Register count_linear() for <class 'torch.nn.modules.linear.Linear'>.
+  [INFO] Register count_normalization() for <class 'torch.nn.modules.batchnorm.BatchNorm1d'>.
+  Computational complexity:       4582498.0
+  Number of parameters:           149648.0
+  FLOPs_reduced = 98.54
+  param_reduced = 99.00
+
+  (base) tien@p3660:~/NORTON$ python complexity.py --arch densenet_40 -r 8 -cpr [0.]+[0.08]*6+[0.09]*6+[0.08]*26
+  [INFO] Register count_convNd() for <class 'torch.nn.modules.conv.Conv2d'>.
+  [INFO] Register zero_ops() for <class 'torch.nn.modules.container.Sequential'>.
+  [INFO] Register count_normalization() for <class 'torch.nn.modules.batchnorm.BatchNorm2d'>.
+  [INFO] Register zero_ops() for <class 'torch.nn.modules.activation.ReLU'>.
+  [INFO] Register count_avgpool() for <class 'torch.nn.modules.pooling.AvgPool2d'>.
+  [INFO] Register count_linear() for <class 'torch.nn.modules.linear.Linear'>.
+  Computational complexity:       213587810.0
+  Number of parameters:           745468
+  FLOPs_reduced = 26.38
+  param_reduced = 29.63
+
+  (base) tien@p3660:~/NORTON$ python complexity.py --dataset imagenet --arch resnet_50 -r 1 -cpr [0.]+[0.1]*2+[0.4]*5+[0.75]*12
+  [INFO] Register count_convNd() for <class 'torch.nn.modules.conv.Conv2d'>.
+  [INFO] Register count_normalization() for <class 'torch.nn.modules.batchnorm.BatchNorm2d'>.
+  [INFO] Register zero_ops() for <class 'torch.nn.modules.activation.ReLU'>.
+  [INFO] Register zero_ops() for <class 'torch.nn.modules.pooling.MaxPool2d'>.
+  [INFO] Register zero_ops() for <class 'torch.nn.modules.container.Sequential'>.
+  [INFO] Register count_adap_avgpool() for <class 'torch.nn.modules.pooling.AdaptiveAvgPool2d'>.
+  [INFO] Register count_linear() for <class 'torch.nn.modules.linear.Linear'>.
+  Computational complexity:       923650408.0
+  Number of parameters:           5885736
+  FLOPs_reduced = 77.59
+  param_reduced = 76.97
+  ```
+  </details>
+
+
+**2. Reproduce our results**
+- Use [decompose.py](./decompose.py), [prune.py](./prune.py), and [main_imagenet.py](./main_imagenet.py) to reproduce our results. Detailed instructions will be added soon.
+- Use [detection/train.py](./detection/train.py) to take compressed ResNet-50/Imagenet as the backbone models for training Faster/Mask/Keypoint-RCNN on COCO.
+
+
+**3. Further developement**
+
+  While this paper primarily focuses on compressing models using CPD due to its simplicity and representativeness, our proposed framework is highly general and can be readily applied to other tensor decomposition approaches, such as TD, TT, etc. It is important to highlight that different decomposition methods can be adapted to NORTON in various ways, such as layer decomposition or filter decomposition approaches. Similarly, the pruning phase can be customized by replacing our similarity-based pruning method with other pruning techniques that are more suitable for specific problems. The orthogonality of NORTON allows for flexible integration of different decomposition and pruning techniques.
+
+Please see [decomposition](./decomposition/) and [pruning](./pruning/) for more details.
 
 # 🕙 ToDo
-- [ ] Write detailed documentation.
+- [ ] Integrate other decomposition and pruning techniques.
+- [x] Write detailed documentation.
 - [x] Upload compressed models.
 - [ ] Clean code.
 

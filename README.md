@@ -255,7 +255,7 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 
   <details>
 
-  *Notes:* The name of the checkpoint contains meta-data, including: architecture, decomposition rank, pruning ratio, and top-1 validation accuracy. For example, `vgg_16_bn_[0.6]*6+[0.8]*7_1_90.32.pt` is a VGG-16-BN model which is compressed with rank `1` along with a pruning ratio of `[0.6]*6+[0.8]*7`. This checkpoint reaches `90.32`% top-1 validation accuracy.
+  *Notes:* The name of the checkpoint contains meta-data, including architecture, decomposition rank, pruning ratio, and top-1 validation accuracy. For example, `vgg_16_bn_[0.6]*6+[0.8]*7_1_90.32.pt` is a VGG-16-BN model which is compressed with rank `1` along with a pruning ratio of `[0.6]*6+[0.8]*7`. This checkpoint reaches `90.32`% top-1 validation accuracy.
   </details>
 
 - Download the datasets
@@ -263,21 +263,7 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 
    The CIFAR dataset will be automatically downloaded.
 
-   The Imagenet dataset can be dowloaded [here](https://image-net.org/download-images.php) and process as follows:
-  ```bash
-  echo "Extract Train set of ImageNet"
-  cd data/imagenet &&
-  mkdir train && mv ILSVRC2012_img_train.tar train/ && cd train &&
-  tar -xvf ILSVRC2012_img_train.tar && rm -f ILSVRC2012_img_train.tar
-  find . -name "*.tar" | while read NAME ; do mkdir -p "${NAME%.tar}"; tar -xvf "${NAME}" -C "${NAME%.tar}"; rm -f "${NAME}"; done
-  cd ..
-  # val
-  echo "Extract Val set of ImageNet"
-  mkdir val && mv ILSVRC2012_img_val.tar val/ && mv valprep.sh val && cd val &&
-  tar -xvf ILSVRC2012_img_val.tar &&
-  cat valprep.sh | bash
-  cd ..
-  ```
+   The Imagenet dataset can be downloaded [here](https://image-net.org/download-images.php) and processed as this [script](https://gist.github.com/BIGBALLON/8a71d225eff18d88e469e6ea9b39cef4).
   </details>
 
 - Use [evaluate.py](./evaluate.py) to validate the performance of the checkpoints.
@@ -403,7 +389,7 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 - Use [detection/train.py](./detection/train.py) to take compressed ResNet-50/Imagenet as the backbone models for training Faster/Mask/Keypoint-RCNN on COCO.
 
 
-**3. Further developement**
+**3. Further development**
 
   While this paper primarily focuses on compressing models using CPD due to its simplicity and representativeness, our proposed framework is highly general and can be readily applied to other tensor decomposition approaches, such as TD, TT, etc. It is important to highlight that different decomposition methods can be adapted to NORTON in various ways, such as layer decomposition or filter decomposition approaches. Similarly, the pruning phase can be customized by replacing our similarity-based pruning method with other pruning techniques that are more suitable for specific problems. The orthogonality of NORTON allows for flexible integration of different decomposition and pruning techniques.
 

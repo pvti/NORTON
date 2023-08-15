@@ -17,6 +17,7 @@
 
 -----------------
 ![Visitors](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2Fpvtien96%2FNORTON&countColor=%23263759)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ### 🌟 Enhanced network compression through tensor decompositions and pruning
 In this work, we propose NORTON (enhanced Network cOmpRession through TensOr decompositions and pruNing), a novel method for network compression. NORTON introduces the concept of filter decomposition, enabling a more detailed decomposition of the network while preserving the weight's multidimensional properties. Our method incorporates a novel structured pruning approach, effectively integrating the decomposed model. Through extensive experiments on various architectures, benchmark datasets, and representative vision tasks, we demonstrate the usefulness of our method. NORTON achieves superior results compared to state-of-the-art techniques in terms of complexity and accuracy.
@@ -419,7 +420,7 @@ If the code and paper help your research, please kindly cite:
     howpublished={\url{https://github.com/pvtien96/NORTON}},
   }
 ```
-# License
-This project is released under the [Apache 2.0 license](LICENSE).
+
+
 # Acknowledgement
 This code is developed based on excellent open-sourced projects including [Torchvision](https://github.com/pytorch/vision), [HRankPlus](https://github.com/lmbxmu/HRankPlus/tree/master), and [Tensor Decompositions](https://github.com/mostafaelhoushi/tensor-decompositions).

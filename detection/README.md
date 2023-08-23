@@ -35,3 +35,15 @@ torchrun --nproc_per_node=8 train.py --dataset coco --model maskrcnn_CPresnet50_
 ```
 torchrun --nproc_per_node=8 train.py --dataset coco_kp --model keypointrcnn_CPresnet50_fpn --epochs 46 --lr-steps 36 43 --aspect-ratio-group-factor 3 --weights-backbone resnet_50_pabs_.0.+.0.1.2+.0.4.5+.0.75.12_1.pt -dr 1 -cpr [0.]+[0.1]*2+[0.4]*5+[0.75]*12
 ```
+
+
+# Visualizing model inference
+Compressed models can be deployed as [torchvision's guide](https://pytorch.org/vision/stable/models.html#object-detection-instance-segmentation-and-person-keypoint-detection).
+
+For your convenience, we have also prepared an example script, [visualize.py](./visualize.py), that emphasizes the enhanced FPS achieved by the compressed model. Below is the example usage:
+
+```
+python visualize.py --input barbie.mp4 --fps 20 --custom --weight FasterRCNNResNet50FPN_resnet_50_pabs_.0.+.0.1.2+.0.4.5+.0.75.12_1.pt -dr 1 -cpr [0.]+[0.1]*2+[0.4]*5+[0.75]*12
+```
+
+By using this script, you can effortlessly visualize and compare the inference speed of both the baseline and pruned models. This provides a clear demonstration of the substantial throughput acceleration achieved by NORTON's compression techniques.

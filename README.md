@@ -19,7 +19,7 @@
 ![Visitors](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2Fpvtien96%2FNORTON&countColor=%23263759)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-### 🌟 Enhanced network compression through tensor decompositions and pruning
+### Enhanced network compression through tensor decompositions and pruning
 In this work, we propose NORTON (enhanced Network cOmpRession through TensOr decompositions and pruNing), a novel method for network compression. NORTON introduces the concept of filter decomposition, enabling a more detailed decomposition of the network while preserving the weight's multidimensional properties. Our method incorporates a novel structured pruning approach, effectively integrating the decomposed model. Through extensive experiments on various architectures, benchmark datasets, and representative vision tasks, we demonstrate the usefulness of our method. NORTON achieves superior results compared to state-of-the-art techniques in terms of complexity and accuracy.
 
 <div>
@@ -40,8 +40,14 @@ In this work, we propose NORTON (enhanced Network cOmpRession through TensOr dec
 </div>
 
 
-## 🚩🚩🚩 Main results 
+# 🌟 News
+* **2023.8.23:** Throughput acceleration :stars: [experiment](#throughput-acceleration) is released :tada:.
+* **2023.8.01:** Detail instructions for checkpoint verification are released.
+* **2023.7.28:** Baseline and compressed checkpoints :gift: are released.
+* **2023.7.26:** Paper submitted to IEEE TNNLS. The code is released. Stay tuned for more exciting updates!⌛
 
+
+# 🚩 Main results 
 
 <div align="center ">
   <img class="image" src="assets\Vgg16-CIFAR10.png" width="40%" height="100%">
@@ -242,11 +248,6 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 </details>
 
 
-# 🌟 News
-* **2023.8.01:** Detail instructions for checkpoint verification are released.
-* **2023.7.28:** Baseline and compressed checkpoints :gift: are released.
-* **2023.7.26:** Paper submitted to IEEE TNNLS. The code is released. Stay tuned for more exciting updates!⌛
-
 # 🔓 Verification, Reproducibility and Further Development
 **1. Verify our results**
 
@@ -396,13 +397,36 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 
 Please see [decomposition](./decomposition/) and [pruning](./pruning/) for more details.
 
+
+# :art: Supplementary materials
+## 1. Throughput acceleration. <a name="throughput-acceleration"></a>
+<table style="width: 100%; border: none; border-collapse: collapse;">
+  <tr>
+    <td style="width: 50%; padding: 10px; border: none;">
+      <img src="assets/baseline.gif" alt="Baseline" style="width: 100%;">
+    </td>
+    <td style="width: 50%; padding: 10px; border: none;">
+      <img src="assets/compressed.gif" alt="Pruned" style="width: 100%;">
+    </td>
+  </tr>
+</table>
+
+<div align="center">
+    Baseline (<em>left</em>) vs Compressed (<em>right</em>) model inference.
+</div>
+
+To underscore the practical advantages of NORTON, an experiment was meticulously conducted, involving a direct comparison between a baseline model and a compressed model, both tailored for object detection tasks. Leveraging the FasterRCNN_ResNet50_FPN architecture on a RTX 3060 GPU, the experiment robustly highlights the substantial performance enhancement achieved by NORTON. The accompanying GIFs offer a vivid visual depiction: the baseline model showcases an inference speed of approximately 9 FPS, while the NORTON-compressed model boasts a remarkable twofold acceleration in throughput. This notable disparity effectively showcases NORTON's efficacy and scalability, firmly establishing its relevance and applicability across diverse deployment scenarios.
+
+*Note*: For replication of this experiment, please refer to [detection/README.md](detection/README.md).
+
+
 # 🕙 ToDo
 - [ ] Integrate other decomposition and pruning techniques.
 - [x] Write detailed documentation.
 - [x] Upload compressed models.
 - [ ] Clean code.
 
-# Contact
+# :email: Contact
  In this work, we have proposed NORTON, a novel network compression method. This hybrid approach enjoys the advantages of both tensor decomposition and structured pruning by combining them orthogonally. Its superiority is demonstrated through various experiments and analyses. We introduce the concept of filter decomposition for the first time in the literature, along with the discrimination of approach in tensor decomposition which was ambiguous before. Besides, the novel distance-based structured pruning algorithm is developed and proved to incorporate well with the decomposition phase. We hope that the new perspective of NORTON and its template may inspire more developments 🚀🚀🚀 on network compression via filter decomposition and hybrid approach.
 
 Your contributions can play a significant role in this endeavor, and we warmly welcome your participation in our project!
@@ -410,7 +434,7 @@ Your contributions can play a significant role in this endeavor, and we warmly w
 To contact us, never hesitate to send an email to [pvtien96@gmail.com](mailto:pvtien96@gmail.com) (for technical problems), [zniyed@univ-tln.fr](mailto:zniyed@univ-tln.fr) (for tensor decompositions), or [tpnguyen@univ-tln.fr](mailto:tpnguyen@univ-tln.fr) (for general development)!
 <br></br>
 
-# Citation
+# :bookmark: Citation
 If the code and paper help your research, please kindly cite:
 ```
 @misc{pham2023norton,
@@ -422,5 +446,5 @@ If the code and paper help your research, please kindly cite:
 ```
 
 
-# Acknowledgement
+# :thumbsup: Acknowledgement
 This code is developed based on excellent open-sourced projects including [Torchvision](https://github.com/pytorch/vision), [HRankPlus](https://github.com/lmbxmu/HRankPlus/tree/master), and [Tensor Decompositions](https://github.com/mostafaelhoushi/tensor-decompositions).

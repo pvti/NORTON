@@ -62,9 +62,7 @@ def fasterrcnn_CPresnet50_fpn(
 
     if weights is not None:
         weights_backbone = None
-        num_classes = _ovewrite_value_param(
-            "num_classes", num_classes, len(weights.meta["categories"])
-        )
+        num_classes = 91
     elif num_classes is None:
         num_classes = 91
 
@@ -201,7 +199,7 @@ def maskrcnn_CPresnet50_fpn(
 
 def keypointrcnn_CPresnet50_fpn(
     *,
-    weights = None,
+    weights=None,
     num_classes: Optional[int] = None,
     num_keypoints: Optional[int] = None,
     weights_backbone=None,
@@ -281,8 +279,12 @@ def keypointrcnn_CPresnet50_fpn(
 
     if weights is not None:
         weights_backbone = None
-        num_classes = _ovewrite_value_param("num_classes", num_classes, len(weights.meta["categories"]))
-        num_keypoints = _ovewrite_value_param("num_keypoints", num_keypoints, len(weights.meta["keypoint_names"]))
+        num_classes = _ovewrite_value_param(
+            "num_classes", num_classes, len(weights.meta["categories"])
+        )
+        num_keypoints = _ovewrite_value_param(
+            "num_keypoints", num_keypoints, len(weights.meta["keypoint_names"])
+        )
     else:
         if num_classes is None:
             num_classes = 2
@@ -290,7 +292,9 @@ def keypointrcnn_CPresnet50_fpn(
             num_keypoints = 17
 
     is_trained = weights is not None or weights_backbone is not None
-    trainable_backbone_layers = _validate_trainable_layers(is_trained, trainable_backbone_layers, 5, 3)
+    trainable_backbone_layers = _validate_trainable_layers(
+        is_trained, trainable_backbone_layers, 5, 3
+    )
 
     backbone = resnet_50(compress_rate=compress_rate, rank=rank)
     if weights_backbone is not None:

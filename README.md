@@ -41,6 +41,7 @@ In this work, we propose NORTON (enhanced Network cOmpRession through TensOr dec
 
 
 # 🌟 News
+* **2023.10.31:** :ghost: :jack_o_lantern: Add instance segmentation and keypoint detection [visualization](#throughput-acceleration).
 * **2023.8.23:** Throughput acceleration :stars: [experiment](#throughput-acceleration) is released :tada:.
 * **2023.8.01:** Detail instructions for checkpoint verification are released.
 * **2023.7.28:** Baseline and compressed checkpoints :gift: are released.
@@ -400,6 +401,7 @@ Please see [decomposition](./decomposition/) and [pruning](./pruning/) for more 
 
 # :art: Supplementary materials
 ## 1. Throughput acceleration. <a name="throughput-acceleration"></a>
++ FasterRCNN for object detection
 <table style="width: 100%; border: none; border-collapse: collapse;">
   <tr>
     <td style="width: 50%; padding: 10px; border: none;">
@@ -407,6 +409,30 @@ Please see [decomposition](./decomposition/) and [pruning](./pruning/) for more 
     </td>
     <td style="width: 50%; padding: 10px; border: none;">
       <img src="assets/compressed.gif" alt="Pruned" style="width: 100%;">
+    </td>
+  </tr>
+</table>
+
++ MaskRCNN for instance segmentation
+<table style="width: 100%; border: none; border-collapse: collapse;">
+  <tr>
+    <td style="width: 50%; padding: 10px; border: none;">
+      <img src="assets/baseline_mask.gif" alt="Baseline" style="width: 100%;">
+    </td>
+    <td style="width: 50%; padding: 10px; border: none;">
+      <img src="assets/compressed_mask.gif" alt="Pruned" style="width: 100%;">
+    </td>
+  </tr>
+</table>
+
++ KeypointRCNN for human keypoint detection
+<table style="width: 100%; border: none; border-collapse: collapse;">
+  <tr>
+    <td style="width: 50%; padding: 10px; border: none;">
+      <img src="assets/baseline_keypoint.gif" alt="Baseline" style="width: 100%;">
+    </td>
+    <td style="width: 50%; padding: 10px; border: none;">
+      <img src="assets/compressed_keypoint.gif" alt="Pruned" style="width: 100%;">
     </td>
   </tr>
 </table>

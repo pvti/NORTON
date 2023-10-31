@@ -171,9 +171,7 @@ def maskrcnn_CPresnet50_fpn(
 
     if weights is not None:
         weights_backbone = None
-        num_classes = _ovewrite_value_param(
-            "num_classes", num_classes, len(weights.meta["categories"])
-        )
+        num_classes = 91
     elif num_classes is None:
         num_classes = 91
 
@@ -279,12 +277,8 @@ def keypointrcnn_CPresnet50_fpn(
 
     if weights is not None:
         weights_backbone = None
-        num_classes = _ovewrite_value_param(
-            "num_classes", num_classes, len(weights.meta["categories"])
-        )
-        num_keypoints = _ovewrite_value_param(
-            "num_keypoints", num_keypoints, len(weights.meta["keypoint_names"])
-        )
+        num_classes = 2
+        num_keypoints = 17
     else:
         if num_classes is None:
             num_classes = 2

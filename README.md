@@ -405,10 +405,10 @@ Please see [decomposition](./decomposition/) and [pruning](./pruning/) for more 
 <table style="width: 100%; border: none; border-collapse: collapse;">
   <tr>
     <td style="width: 50%; padding: 10px; border: none;">
-      <img src="assets/baseline.gif" alt="Baseline" style="width: 100%;">
+      <img src="assets/baseline_faster.gif" alt="Baseline" style="width: 100%;">
     </td>
     <td style="width: 50%; padding: 10px; border: none;">
-      <img src="assets/compressed.gif" alt="Pruned" style="width: 100%;">
+      <img src="assets/compressed_faster.gif" alt="Pruned" style="width: 100%;">
     </td>
   </tr>
 </table>

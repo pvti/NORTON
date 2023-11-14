@@ -41,6 +41,7 @@ In this work, we propose NORTON (enhanced Network cOmpRession through TensOr dec
 
 
 # 🌟 News
+* **2023.11.14:** Add [qualitative assessment](#cam) of feature preservation .
 * **2023.10.31:** :ghost: :jack_o_lantern: Add instance segmentation and keypoint detection [visualization](#throughput-acceleration).
 * **2023.8.23:** Throughput acceleration :stars: [experiment](#throughput-acceleration) is released :tada:.
 * **2023.8.01:** Detail instructions for checkpoint verification are released.
@@ -445,6 +446,21 @@ To underscore the practical advantages of NORTON, an experiment was meticulously
 
 *Note*: For replication of this experiment, please refer to [detection/README.md](detection/README.md).
 
+## 2. Visualizing feature preservation. <a name="cam"></a>
+| Input | CR=0% | CR=50% | CR=64% | CR=78% |
+|:----------:|:----------:|:----------:|:----------:|:----------:|
+| ![](assets/cam/ILSVRC2012_val_00003682.JPEG) | ![](assets/cam/ILSVRC2012_val_00003682_ori.jpg) | ![](assets/cam/ILSVRC2012_val_00003682_norton_50.jpg) | ![](assets/cam/ILSVRC2012_val_00003682_norton_64.jpg) | ![](assets/cam/ILSVRC2012_val_00003682_norton_78.jpg) |
+| ![](assets/cam/ILSVRC2012_val_00010983.JPEG) | ![](assets/cam/ILSVRC2012_val_00010983_ori.jpg) | ![](assets/cam/ILSVRC2012_val_00010983_norton_50.jpg) | ![](assets/cam/ILSVRC2012_val_00010983_norton_64.jpg) | ![](assets/cam/ILSVRC2012_val_00010983_norton_78.jpg) |
+| ![](assets/cam/ILSVRC2012_val_00035947.JPEG) | ![](assets/cam/ILSVRC2012_val_00035947_ori.jpg) | ![](assets/cam/ILSVRC2012_val_00035947_norton_50.jpg) | ![](assets/cam/ILSVRC2012_val_00035947_norton_64.jpg) | ![](assets/cam/ILSVRC2012_val_00035947_norton_78.jpg) |
+| ![](assets/cam/ILSVRC2012_val_00045226.JPEG) | ![](assets/cam/ILSVRC2012_val_00045226_ori.jpg) | ![](assets/cam/ILSVRC2012_val_00045226_norton_50.jpg) | ![](assets/cam/ILSVRC2012_val_00045226_norton_64.jpg) | ![](assets/cam/ILSVRC2012_val_00045226_norton_78.jpg) |
+| ![](assets/cam/ILSVRC2012_val_00046629.JPEG) | ![](assets/cam/ILSVRC2012_val_00046629_ori.jpg) | ![](assets/cam/ILSVRC2012_val_00046629_norton_50.jpg) | ![](assets/cam/ILSVRC2012_val_00046629_norton_64.jpg) | ![](assets/cam/ILSVRC2012_val_00046629_norton_78.jpg) |
+
+<div align="center">
+    Qualitative assessment of feature preservation in compressed models.
+</div>
+We present a qualitative evaluation of feature preservation in NORTON, complementing the established efficiency demonstrated through numerical results. Our analysis involves a random selection of 5 images from the ImageNet validation dataset, examining three compression levels applied to the original ResNet-50 model: 50%, 64%, and 78%. Utilizing GradCAM for interpretation, we visually assess and analyze feature maps in both the original and compressed models.
+
+The visual representation underscores NORTON's efficacy in retaining crucial features across a diverse range of classes. Noteworthy is its consistent robustness in capturing and preserving essential information at different CRs. This resilience implies sustained effectiveness and reliability across varying scenarios and compression levels, positioning NORTON as a versatile choice for network compression across diverse applications and datasets.
 
 # 🕙 ToDo
 - [ ] Integrate other decomposition and pruning techniques.

@@ -41,7 +41,8 @@ In this work, we propose NORTON (enhanced Network cOmpRession through TensOr dec
 
 
 # 🌟 News
-* **2023.11.14:** Add [qualitative assessment](#cam) of feature preservation .
+* **2024.02.01:** Add [ablation study](#rank) :bar_chart: on the impact of rank and pruning ratio selection.
+* **2023.11.14:** Add [qualitative assessment](#cam) of feature preservation.
 * **2023.10.31:** :ghost: :jack_o_lantern: Add instance segmentation and keypoint detection [visualization](#throughput-acceleration).
 * **2023.8.23:** Throughput acceleration :stars: [experiment](#throughput-acceleration) is released :tada:.
 * **2023.8.01:** Detail instructions for checkpoint verification are released.
@@ -401,7 +402,7 @@ Please see [decomposition](./decomposition/) and [pruning](./pruning/) for more 
 
 
 # :art: Supplementary materials
-## 1. Throughput acceleration. <a name="throughput-acceleration"></a>
+## 1. Throughput acceleration <a name="throughput-acceleration"></a>
 + FasterRCNN for object detection
 <table style="width: 100%; border: none; border-collapse: collapse;">
   <tr>
@@ -446,7 +447,7 @@ To underscore the practical advantages of NORTON, an experiment was meticulously
 
 *Note*: For replication of this experiment, please refer to [detection/README.md](detection/README.md).
 
-## 2. Visualizing feature preservation. <a name="cam"></a>
+## 2. Visualizing feature preservation <a name="cam"></a>
 | Input | CR=0% | CR=50% | CR=64% | CR=78% |
 |:----------:|:----------:|:----------:|:----------:|:----------:|
 | ![](assets/cam/ILSVRC2012_val_00003682.JPEG) | ![](assets/cam/ILSVRC2012_val_00003682_ori.jpg) | ![](assets/cam/ILSVRC2012_val_00003682_norton_50.jpg) | ![](assets/cam/ILSVRC2012_val_00003682_norton_64.jpg) | ![](assets/cam/ILSVRC2012_val_00003682_norton_78.jpg) |
@@ -462,7 +463,7 @@ We present a qualitative evaluation of feature preservation in NORTON, complemen
 
 The visual representation underscores NORTON's efficacy in retaining crucial features across a diverse range of classes. Noteworthy is its consistent robustness in capturing and preserving essential information at different CRs. This resilience implies sustained effectiveness and reliability across varying scenarios and compression levels, positioning NORTON as a versatile choice for network compression across diverse applications and datasets.
 
-## 3. The Effect of Rank and Pruning Ratio Selection
+## 3. The Effect of Rank and Pruning Ratio Selection <a name="rank"></a>
 We present a comprehensive analysis of the complexity reduction, approximation error, and accuracy metrics both before and after fine-tuning. The results reveal an interesting trend: without fine-tuning, a higher rank leads to better weight approximation, albeit with less compression achieved. Specifically, when $R \leq 5$, our filter decomposition method maintains comparable accuracies, with a maximum drop of only 1.46% compared to the original model without fine-tuning. This suggests that our decomposition step performs admirably even without fine-tuning. Moreover, our approach seamlessly integrates with a fine-tuning step, showcasing that after fine-tuning, the accuracy is fully restored for all cases. It's noteworthy, however, that the achieved compression ratios, while significant, do not surpass those obtained with our proposed hybrid strategy.
 <div align="center">
 

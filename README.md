@@ -462,8 +462,33 @@ We present a qualitative evaluation of feature preservation in NORTON, complemen
 
 The visual representation underscores NORTON's efficacy in retaining crucial features across a diverse range of classes. Noteworthy is its consistent robustness in capturing and preserving essential information at different CRs. This resilience implies sustained effectiveness and reliability across varying scenarios and compression levels, positioning NORTON as a versatile choice for network compression across diverse applications and datasets.
 
+## 3. The Effect of Rank and Pruning Ratio Selection
+We present a comprehensive analysis of the complexity reduction, approximation error, and accuracy metrics both before and after fine-tuning. The results reveal an interesting trend: without fine-tuning, a higher rank leads to better weight approximation, albeit with less compression achieved. Specifically, when $R \leq 5$, our filter decomposition method maintains comparable accuracies, with a maximum drop of only 1.46% compared to the original model without fine-tuning. This suggests that our decomposition step performs admirably even without fine-tuning. Moreover, our approach seamlessly integrates with a fine-tuning step, showcasing that after fine-tuning, the accuracy is fully restored for all cases. It's noteworthy, however, that the achieved compression ratios, while significant, do not surpass those obtained with our proposed hybrid strategy.
+<p align="center">
+
+| Rank |  MACs  | Params |  NMSE  | Acc. without FT | Acc. with FT  |
+|:----:|:------:|:------:|:------:|:---------------:|:-------------:|
+|  1   | 88.03  | 87.06  | 0.6265 |   10.00         |  93.84        |
+|  2   | 76.44  | 75.98  | 0.4114 |   10.00         |  94.11        |
+|  3   | 64.85  | 64.91  | 0.2760 |   68.37         |  94.18        |
+|  4   | 53.27  | 53.84  | 0.1837 |   88.30         |  94.07        |
+|  5   | 41.69  | 42.76  | 0.1173 |   92.44         |  94.22        |
+|  6   | 30.10  | 31.69  | 0.0698 |   93.45         |  94.15        |
+|  7   | 18.51  | 20.61  | 0.0372 |   93.90         |  94.11        |
+|  8   |  6.93  |  9.54  | 0.0137 |   94.03         |  94.03        |
+</p>
+
+This study aims to offer a comprehensive insight into how the choice of rank and pruning ratio influences both complexity reduction and model performance. Given a predefined goal for complexity reduction, the selection of rank and pruning ratio introduces variability in outcomes. For instance, aiming to eliminate approximately 65% of Multiply-Accumulate operations (MACs), as illustrated below, presents multiple choices such as 3N, 4S, 6M, and 8H. Interestingly, these choices, while achieving similar MACs reduction, result in varying accuracy after fine-tuning—94.18%, 93.67%, 92.77%, and 93.15%, respectively. Notably, despite similar MACs reductions, these combinations lead to different levels of parameter reduction: 64.91%, 68.33%, 78.34%, and 87.49%, respectively. This observation prompts further investigation into determining the optimal combination of rank and pruning ratio, particularly in the context of hybrid compression approaches.
+</details>
+<p align="center">
+<img src="assets\rank_pruning-ratio.png" width=50%>
+</p>
+<div align="center ">
+  Comparison of complexity reduction and accuracy withrespect to the rank and the pruning ratio.
+</div>
+
 # 🕙 ToDo
-- [ ] Integrate other decomposition and pruning techniques.
+- [x] Integrate other decomposition and pruning techniques.
 - [x] Write detailed documentation.
 - [x] Upload compressed models.
 - [ ] Clean code.

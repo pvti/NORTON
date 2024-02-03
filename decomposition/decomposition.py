@@ -61,7 +61,7 @@ def conv_weights_to_factors(weights: torch.Tensor, rank: int, n_iter_max=300, n_
     kernel_size = weights.size(2)
     in_channels = weights.size(1)
     out_channels = weights.size(0)
-    device = weights.get_device()
+    device = None if weights.get_device() < 0 else weights.get_device()
 
     # Initialize the factor matrices with zeros
     head_factor = torch.zeros((in_channels, rank, out_channels), device=device)
@@ -113,7 +113,7 @@ def conv_to_cpdblock(conv2d: nn.Conv2d, rank: int, n_iter_max=300, n_iter_singul
     in_channels = conv2d.in_channels
     out_channels = conv2d.out_channels
     weights = conv2d.weight.data
-    device = weights.get_device()
+    device = None if weights.get_device() < 0 else weights.get_device()
 
     head_factor, body_factor, tail_factor = conv_weights_to_factors(
         weights, rank, n_iter_max, n_iter_singular_error)

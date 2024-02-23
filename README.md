@@ -41,6 +41,7 @@ In this work, we propose NORTON (enhanced Network cOmpRession through TensOr dec
 
 
 # 🌟 News
+* **2024.02.23:** Paper accepted by IEEE TNNLS :confetti_ball:.
 * **2024.02.01:** Add [ablation study](#rank) :bar_chart: on the impact of rank and pruning ratio selection.
 * **2023.11.14:** Add [qualitative assessment](#cam) of feature preservation.
 * **2023.10.31:** :ghost: :jack_o_lantern: Add instance segmentation and keypoint detection [visualization](#throughput-acceleration).

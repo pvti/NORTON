@@ -13,7 +13,7 @@ version: 0.1.0
 date-released: 2023-07-28
 url: "https://github.com/pvtien96/NORTON"
 preferred-citation:
-  type: misc
+  type: article
   authors:
   - family-names: Pham
     given-names: Van Tien
@@ -23,4 +23,5 @@ preferred-citation:
   - family-names: Nguyen
     given-names:  Thanh Phuong
   title: "Enhanced network compression through tensor decompositions and pruning"
-  year: 2023
+  journal: "IEEE Transactions on Neural Networks and Learning Systems"
+  year: 2024

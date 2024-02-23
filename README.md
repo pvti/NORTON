@@ -508,11 +508,11 @@ To contact us, never hesitate to send an email to [pvtien96@gmail.com](mailto:pv
 # :bookmark: Citation
 If the code and paper help your research, please kindly cite:
 ```
-@misc{pham2023norton,
+@article{pham2024enhanced,
     title={Enhanced network compression through tensor decompositions and pruning}, 
     author={Van Tien, Pham and Yassine, Zniyed and Thanh Phuong, Nguyen},
-    year={2023},
-    howpublished={\url{https://github.com/pvtien96/NORTON}},
+    journal={IEEE Transactions on Neural Networks and Learning Systems},
+    year={2024}
   }
 ```
 

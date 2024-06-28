@@ -4,7 +4,7 @@
 
 <div>
 <div align="center">
-    <a href='https://github.com/pvtien96' target='_blank'>Van Tien PHAM<sup>1,&#x2709</sup></a>&emsp;
+    <a href='https://github.com/pvti' target='_blank'>Van Tien PHAM<sup>1,&#x2709</sup></a>&emsp;
     <a href='https://yzniyed.blogspot.com/p/about-me.html' target='_blank'>Yassine ZNIYED<sup>1</sup></a>&emsp;
     <a href='http://tpnguyen.univ-tln.fr/' target='_blank'>Thanh Phuong NGUYEN<sup>1</sup></a>&emsp;
 </div>
@@ -16,7 +16,7 @@
 </div>
 
 -----------------
-![Visitors](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2Fpvtien96%2FNORTON&countColor=%23263759)
+![Visitors](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2Fpvti%2FNORTON&countColor=%23263759)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ### Enhanced network compression through tensor decompositions and pruning
@@ -255,9 +255,9 @@ NORTON is compared with the SOTA in the fields of low-rank decompositions, struc
 # 🔓 Verification, Reproducibility and Further Development
 **1. Verify our results**
 
-  Please download the [checkpoints](https://github.com/pvtien96/NORTON/releases/tag/v0.1.0) and evaluate their performance with the corresponding script and dataset.
+  Please download the [checkpoints](https://github.com/pvti/NORTON/releases/tag/v0.1.0) and evaluate their performance with the corresponding script and dataset.
 
-- Download the [checkpoints](https://github.com/pvtien96/NORTON/releases/tag/v0.1.0)
+- Download the [checkpoints](https://github.com/pvti/NORTON/releases/tag/v0.1.0)
 
   <details>
 
@@ -502,7 +502,7 @@ This study aims to offer a comprehensive insight into how the choice of rank and
 
 Your contributions can play a significant role in this endeavor, and we warmly welcome your participation in our project!
 
-To contact us, never hesitate to send an email to [pvtien96@gmail.com](mailto:pvtien96@gmail.com) (for technical problems), [zniyed@univ-tln.fr](mailto:zniyed@univ-tln.fr) (for tensor decompositions), or [tpnguyen@univ-tln.fr](mailto:tpnguyen@univ-tln.fr) (for general development)!
+To contact us, never hesitate to send an email to [pvti@gmail.com](mailto:pvti@gmail.com) (for technical problems), [zniyed@univ-tln.fr](mailto:zniyed@univ-tln.fr) (for tensor decompositions), or [tpnguyen@univ-tln.fr](mailto:tpnguyen@univ-tln.fr) (for general development)!
 <br></br>
 
 # :bookmark: Citation

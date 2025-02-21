@@ -4,9 +4,9 @@
 
 <div>
 <div align="center">
-    <a href='https://github.com/pvtien96' target='_blank'>Van Tien PHAM<sup>1,&#x2709</sup></a>&emsp;
-    <a href='https://yzniyed.blogspot.com/p/about-me.html' target='_blank'>Yassine ZNIYED<sup>1</sup></a>&emsp;
-    <a href='http://tpnguyen.univ-tln.fr/' target='_blank'>Thanh Phuong NGUYEN<sup>1</sup></a>&emsp;
+    <a href='https://pageperso.lis-lab.fr/van-tien.pham/' target='_blank'>Van Tien Pham<sup>1,&#x2709</sup></a>&emsp;
+    <a href='https://yzniyed.blogspot.com/p/about-me.html' target='_blank'>Yassine Zniyed<sup>1</sup></a>&emsp;
+    <a href='http://tpnguyen.univ-tln.fr/' target='_blank'>Thanh Phuong Nguyen<sup>1</sup></a>&emsp;
 </div>
 <div>
 
@@ -19,7 +19,7 @@
 ![Visitors](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2Fpvtien96%2FNORTON&countColor=%23263759)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-### Enhanced network compression through tensor decompositions and pruning
+### Enhanced Network Compression Through Tensor Decompositions and Pruning
 In this work, we propose NORTON (enhanced Network cOmpRession through TensOr decompositions and pruNing), a novel method for network compression. NORTON introduces the concept of filter decomposition, enabling a more detailed decomposition of the network while preserving the weight's multidimensional properties. Our method incorporates a novel structured pruning approach, effectively integrating the decomposed model. Through extensive experiments on various architectures, benchmark datasets, and representative vision tasks, we demonstrate the usefulness of our method. NORTON achieves superior results compared to state-of-the-art techniques in terms of complexity and accuracy.
 
 <div>

@@ -28,6 +28,7 @@ def parse_args():
         default="vgg_16_bn",
         choices=(
             "vgg_16_bn",
+            "vgg_19_bn",
             "resnet_56",
             "resnet_110",
             "densenet_40",

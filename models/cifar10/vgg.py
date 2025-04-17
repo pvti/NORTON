@@ -3,25 +3,49 @@ from collections import OrderedDict
 from decomposition.CPDBlock import CPDBlock
 
 
-defaultcfg = [
-    64,
-    64,
-    "M",
-    128,
-    128,
-    "M",
-    256,
-    256,
-    256,
-    "M",
-    512,
-    512,
-    512,
-    "M",
-    512,
-    512,
-    512,
-]
+defaultcfg = {
+    "vgg16": [
+        64,
+        64,
+        "M",
+        128,
+        128,
+        "M",
+        256,
+        256,
+        256,
+        "M",
+        512,
+        512,
+        512,
+        "M",
+        512,
+        512,
+        512,
+    ],
+    "vgg19": [
+        64,
+        64,
+        "M",
+        128,
+        128,
+        "M",
+        256,
+        256,
+        256,
+        256,
+        "M",
+        512,
+        512,
+        512,
+        512,
+        "M",
+        512,
+        512,
+        512,
+        512,
+    ],
+}
 
 
 class VGG(nn.Module):
@@ -29,7 +53,7 @@ class VGG(nn.Module):
         super(VGG, self).__init__()
 
         if cfg is None:
-            cfg = defaultcfg
+            raise ValueError("cfg must be specified")
 
         self.compress_rate = compress_rate[:]
         self.compress_rate.append(0.0)
@@ -84,7 +108,7 @@ class VGG(nn.Module):
         return x
 
 
-def vgg_16_bn(compress_rate=[0.0] * 13, rank=0):
+def vgg_16_bn(compress_rate=[0.0] * 13, rank=0, num_classes=10):
     """
     A custom VGG-16-BN module with compression rate and rank for CPD.
 
@@ -98,4 +122,18 @@ def vgg_16_bn(compress_rate=[0.0] * 13, rank=0):
 
     """
 
-    return VGG(compress_rate=compress_rate, rank=rank)
+    return VGG(
+        compress_rate=compress_rate,
+        rank=rank,
+        cfg=defaultcfg["vgg16"],
+        num_classes=num_classes,
+    )
+
+
+def vgg_19_bn(compress_rate=[0.0] * 16, rank=0, num_classes=100):
+    return VGG(
+        compress_rate=compress_rate,
+        rank=rank,
+        cfg=defaultcfg["vgg19"],
+        num_classes=num_classes,
+    )

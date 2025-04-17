@@ -14,9 +14,9 @@ import torch.nn as nn
 import torch.utils
 
 
-class record_config():
+class record_config:
     def __init__(self, args):
-        now = datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+        now = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
         today = datetime.date.today()
 
         self.args = args
@@ -28,19 +28,19 @@ class record_config():
 
         _make_dir(self.job_dir)
 
-        config_dir = self.job_dir / 'config.txt'
-        with open(config_dir, 'w') as f:
-            f.write(now + '\n\n')
+        config_dir = self.job_dir / "config.txt"
+        with open(config_dir, "w") as f:
+            f.write(now + "\n\n")
             for arg in vars(args):
-                f.write('{}: {}\n'.format(arg, getattr(args, arg)))
-            f.write('\n')
+                f.write("{}: {}\n".format(arg, getattr(args, arg)))
+            f.write("\n")
 
 
 def get_logger(file_path):
 
-    logger = logging.getLogger('gal')
-    log_format = '%(asctime)s | %(message)s'
-    formatter = logging.Formatter(log_format, datefmt='%m/%d %I:%M:%S %p')
+    logger = logging.getLogger("gal")
+    log_format = "%(asctime)s | %(message)s"
+    formatter = logging.Formatter(log_format, datefmt="%m/%d %I:%M:%S %p")
     file_handler = logging.FileHandler(file_path)
     file_handler.setFormatter(formatter)
     stream_handler = logging.StreamHandler()
@@ -63,10 +63,8 @@ class CrossEntropyLabelSmooth(nn.Module):
 
     def forward(self, inputs, targets):
         log_probs = self.logsoftmax(inputs)
-        targets = torch.zeros_like(log_probs).scatter_(
-            1, targets.unsqueeze(1), 1)
-        targets = (1 - self.epsilon) * targets + \
-            self.epsilon / self.num_classes
+        targets = torch.zeros_like(log_probs).scatter_(1, targets.unsqueeze(1), 1)
+        targets = (1 - self.epsilon) * targets + self.epsilon / self.num_classes
         loss = (-targets * log_probs).mean(0).sum()
         return loss
 
@@ -74,7 +72,7 @@ class CrossEntropyLabelSmooth(nn.Module):
 class AverageMeter(object):
     """Computes and stores the average and current value"""
 
-    def __init__(self, name, fmt=':f'):
+    def __init__(self, name, fmt=":f"):
         self.name = name
         self.fmt = fmt
         self.reset()
@@ -92,7 +90,7 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
     def __str__(self):
-        fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
+        fmtstr = "{name} {val" + self.fmt + "} ({avg" + self.fmt + "})"
         return fmtstr.format(**self.__dict__)
 
 
@@ -105,21 +103,21 @@ class ProgressMeter(object):
     def display(self, batch):
         entries = [self.prefix + self.batch_fmtstr.format(batch)]
         entries += [str(meter) for meter in self.meters]
-        print(' '.join(entries))
+        print(" ".join(entries))
 
     def _get_batch_fmtstr(self, num_batches):
         num_digits = len(str(num_batches // 1))
-        fmt = '{:' + str(num_digits) + 'd}'
-        return '[' + fmt + '/' + fmt.format(num_batches) + ']'
+        fmt = "{:" + str(num_digits) + "d}"
+        return "[" + fmt + "/" + fmt.format(num_batches) + "]"
 
 
 def save_checkpoint(state, is_best, save):
     if not os.path.exists(save):
         os.makedirs(save)
-    filename = os.path.join(save, 'checkpoint.pth.tar')
+    filename = os.path.join(save, "checkpoint.pth.tar")
     torch.save(state, filename)
     if is_best:
-        best_filename = os.path.join(save, 'model_best.pth.tar')
+        best_filename = os.path.join(save, "model_best.pth.tar")
         shutil.copyfile(filename, best_filename)
 
 
@@ -127,7 +125,7 @@ def adjust_learning_rate(optimizer, epoch, args):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
     lr = args.lr * (0.1 ** (epoch // 30))
     for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
+        param_group["lr"] = lr
 
 
 def accuracy(output, target, topk=(1,)):
@@ -148,26 +146,26 @@ def accuracy(output, target, topk=(1,)):
 
 
 def progress_bar(current, total, msg=None):
-    _, term_width = os.popen('stty size', 'r').read().split()
+    _, term_width = os.popen("stty size", "r").read().split()
     term_width = int(term_width)
 
-    TOTAL_BAR_LENGTH = 65.
+    TOTAL_BAR_LENGTH = 65.0
     last_time = time.time()
     begin_time = last_time
 
     if current == 0:
         begin_time = time.time()  # Reset for new bar.
 
-    cur_len = int(TOTAL_BAR_LENGTH*current/total)
+    cur_len = int(TOTAL_BAR_LENGTH * current / total)
     rest_len = int(TOTAL_BAR_LENGTH - cur_len) - 1
 
-    sys.stdout.write(' [')
+    sys.stdout.write(" [")
     for i in range(cur_len):
-        sys.stdout.write('=')
-    sys.stdout.write('>')
+        sys.stdout.write("=")
+    sys.stdout.write(">")
     for i in range(rest_len):
-        sys.stdout.write('.')
-    sys.stdout.write(']')
+        sys.stdout.write(".")
+    sys.stdout.write("]")
 
     cur_time = time.time()
     step_time = cur_time - last_time
@@ -175,73 +173,73 @@ def progress_bar(current, total, msg=None):
     tot_time = cur_time - begin_time
 
     L = []
-    L.append('  Step: %s' % format_time(step_time))
-    L.append(' | Tot: %s' % format_time(tot_time))
+    L.append("  Step: %s" % format_time(step_time))
+    L.append(" | Tot: %s" % format_time(tot_time))
     if msg:
-        L.append(' | ' + msg)
+        L.append(" | " + msg)
 
-    msg = ''.join(L)
+    msg = "".join(L)
     sys.stdout.write(msg)
-    for i in range(term_width-int(TOTAL_BAR_LENGTH)-len(msg)-3):
-        sys.stdout.write(' ')
+    for i in range(term_width - int(TOTAL_BAR_LENGTH) - len(msg) - 3):
+        sys.stdout.write(" ")
 
     # Go back to the center of the bar.
-    for i in range(term_width-int(TOTAL_BAR_LENGTH/2)+2):
-        sys.stdout.write('\b')
-    sys.stdout.write(' %d/%d ' % (current+1, total))
+    for i in range(term_width - int(TOTAL_BAR_LENGTH / 2) + 2):
+        sys.stdout.write("\b")
+    sys.stdout.write(" %d/%d " % (current + 1, total))
 
-    if current < total-1:
-        sys.stdout.write('\r')
+    if current < total - 1:
+        sys.stdout.write("\r")
     else:
-        sys.stdout.write('\n')
+        sys.stdout.write("\n")
     sys.stdout.flush()
 
 
 def format_time(seconds):
-    days = int(seconds / 3600/24)
-    seconds = seconds - days*3600*24
+    days = int(seconds / 3600 / 24)
+    seconds = seconds - days * 3600 * 24
     hours = int(seconds / 3600)
-    seconds = seconds - hours*3600
+    seconds = seconds - hours * 3600
     minutes = int(seconds / 60)
-    seconds = seconds - minutes*60
+    seconds = seconds - minutes * 60
     secondsf = int(seconds)
     seconds = seconds - secondsf
-    millis = int(seconds*1000)
+    millis = int(seconds * 1000)
 
-    f = ''
+    f = ""
     i = 1
     if days > 0:
-        f += str(days) + 'D'
+        f += str(days) + "D"
         i += 1
     if hours > 0 and i <= 2:
-        f += str(hours) + 'h'
+        f += str(hours) + "h"
         i += 1
     if minutes > 0 and i <= 2:
-        f += str(minutes) + 'm'
+        f += str(minutes) + "m"
         i += 1
     if secondsf > 0 and i <= 2:
-        f += str(secondsf) + 's'
+        f += str(secondsf) + "s"
         i += 1
     if millis > 0 and i <= 2:
-        f += str(millis) + 'ms'
+        f += str(millis) + "ms"
         i += 1
-    if f == '':
-        f = '0ms'
+    if f == "":
+        f = "0ms"
     return f
 
 
 def get_cpr(compress_rate):
     cprate_str = compress_rate
-    cprate_str_list = cprate_str.split('+')
-    pat_cprate = re.compile(r'\d+\.\d*')
-    pat_num = re.compile(r'\*\d+')
+    cprate_str_list = cprate_str.split("+")
+    pat_cprate = re.compile(r"\d+\.\d*")
+    pat_num = re.compile(r"\*\d+")
     cprate = []
     for x in cprate_str_list:
         num = 1
         find_num = re.findall(pat_num, x)
         if find_num:
             assert len(find_num) == 1
-            num = int(find_num[0].replace('*', ''))
+            num = int(find_num[0].replace("*", ""))
         find_cprate = re.findall(pat_cprate, x)
         assert len(find_cprate) == 1
         cprate += [float(find_cprate[0])] * num
